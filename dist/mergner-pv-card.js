@@ -1622,25 +1622,8 @@ var MergnerPvCardEditor = class extends HTMLElement {
         searchInput.addEventListener("input", () => {
           const term = searchInput.value;
           this._entitySearchTerms.set(pickerId, term);
-          const lower = term.trim().toLowerCase();
-          picker.querySelectorAll(".picker-option").forEach((opt) => {
-            if (opt.classList.contains("picker-clear")) {
-              opt.hidden = false;
-              return;
-            }
-            const name = (opt.querySelector(".picker-option-name")?.textContent ?? "").toLowerCase();
-            const id = (opt.dataset.value ?? "").toLowerCase();
-            opt.hidden = lower.length > 0 && !name.includes(lower) && !id.includes(lower);
-          });
-          picker.querySelectorAll(".picker-group").forEach((group) => {
-            const visible = group.querySelectorAll(".picker-option:not([hidden])");
-            group.hidden = visible.length === 0;
-          });
-          const hasVisibleOptions = picker.querySelectorAll(".picker-option:not([hidden])").length > 0;
-          const noResults = picker.querySelector(".picker-no-results");
-          if (noResults) {
-            noResults.hidden = hasVisibleOptions;
-          }
+          this._openEntityPicker = pickerId;
+          this.render();
         });
         searchInput.addEventListener("keydown", (event) => {
           if (event.key === "Escape") {
