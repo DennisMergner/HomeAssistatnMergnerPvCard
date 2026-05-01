@@ -8,7 +8,7 @@ const ctx = await context({
   bundle: true,
   format: "esm",
   target: "es2022",
-  outfile: "dist/mergner-pv-card.js",
+  outfile: "mergner-pv-card.js",
   sourcemap: true,
   legalComments: "none",
   minify: false
@@ -21,5 +21,5 @@ const server = await ctx.serve({
   port
 });
 
-console.log(`Dev server running on http://${host}:${server.port}/dist/mergner-pv-card.js`);
+  console.log(`Dev server running on http://${host}:${server.port}/mergner-pv-card.js`);
 console.log("Use this URL as Lovelace resource during design phase.");

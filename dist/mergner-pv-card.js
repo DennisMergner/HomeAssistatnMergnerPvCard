@@ -1,10 +1,155 @@
-var f=[{id:"solar",name:"Solar",x:20,y:20},{id:"battery",name:"Battery",x:80,y:20},{id:"house",name:"House",x:20,y:80},{id:"grid",name:"Grid",x:80,y:80}],g=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],d=class p extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:f,links:g}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){return 5}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}getUnit(e){let r=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof r=="string"?r:""}parseNumber(e){let t=this.getState(e),r=Number.parseFloat(t);return Number.isFinite(r)?r:0}normalizeConfig(e){let t=e.title??"PV Flow";if(e.nodes&&e.nodes.length>0){let i=e.nodes.map(n=>({...n,id:n.id?.trim()||`node_${Math.random().toString(36).slice(2,8)}`,name:n.name?.trim()||"Node",x:this.clampPercent(Number(n.x)),y:this.clampPercent(Number(n.y))})),a=(e.links??[]).filter(n=>i.some(o=>o.id===n.from)&&i.some(o=>o.id===n.to));return{title:t,nodes:i,links:a}}let r=f.map(i=>({...i,entity:e.entities?.[i.id],image:e.images?.[i.id]}));return{title:t,nodes:r,links:g}}renderNode(e){let t=this.getState(e.entity),r=e.unit??this.getUnit(e.entity),i=this.safeText(e.name),a=e.image?.trim(),n=a?`<img src="${this.safeText(a)}" alt="${i}" loading="lazy" />`:`<div class="fallback-icon">${i.slice(0,1)}</div>`;return`
-      <article class="node" style="left:${this.clampPercent(e.x)}%; top:${this.clampPercent(e.y)}%;">
-        <div class="node-media">${n}</div>
-        <div class="node-label">${i}</div>
-        <div class="node-value">${this.safeText(t)} ${this.safeText(r)}</div>
+// src/mergner-pv-card.ts
+var DEFAULT_NODES = [
+  { id: "solar", name: "Solar", x: 20, y: 20 },
+  { id: "battery", name: "Battery", x: 80, y: 20 },
+  { id: "house", name: "House", x: 20, y: 80 },
+  { id: "grid", name: "Grid", x: 80, y: 80 }
+];
+var DEFAULT_LINKS = [
+  { from: "solar", to: "house", entity: "sensor.pv_to_house_power" },
+  { from: "solar", to: "battery", entity: "sensor.pv_to_battery_power" },
+  { from: "battery", to: "house", entity: "sensor.battery_to_house_power" },
+  { from: "grid", to: "house", entity: "sensor.grid_to_house_power" }
+];
+var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
+  _config;
+  _hass;
+  static getConfigElement() {
+    return document.createElement("mergner-pv-card-editor");
+  }
+  static getStubConfig() {
+    return {
+      type: "custom:mergner-pv-card",
+      title: "PV Flow",
+      nodes: DEFAULT_NODES,
+      links: DEFAULT_LINKS
+    };
+  }
+  setConfig(config) {
+    if (!config || config.type !== "custom:mergner-pv-card") {
+      throw new Error("Card type must be custom:mergner-pv-card");
+    }
+    this._config = config;
+    this.render();
+  }
+  set hass(hass) {
+    this._hass = hass;
+    this.render();
+  }
+  getCardSize() {
+    return 5;
+  }
+  connectedCallback() {
+    this.render();
+  }
+  safeText(input) {
+    return input.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  }
+  clampPercent(value) {
+    if (Number.isNaN(value)) {
+      return 50;
+    }
+    return Math.max(2, Math.min(98, value));
+  }
+  getEntity(entityId) {
+    if (!entityId || !this._hass?.states?.[entityId]) {
+      return void 0;
+    }
+    return this._hass.states[entityId];
+  }
+  getState(entityId) {
+    return this.getEntity(entityId)?.state ?? "n/a";
+  }
+  getUnit(entityId) {
+    const attributes = this.getEntity(entityId)?.attributes;
+    const unit = attributes?.unit_of_measurement;
+    return typeof unit === "string" ? unit : "";
+  }
+  parseNumber(entityId) {
+    const raw = this.getState(entityId);
+    const value = Number.parseFloat(raw);
+    return Number.isFinite(value) ? value : 0;
+  }
+  normalizeConfig(config) {
+    const title = config.title ?? "PV Flow";
+    if (config.nodes && config.nodes.length > 0) {
+      const nodes = config.nodes.map((node) => ({
+        ...node,
+        id: node.id?.trim() || `node_${Math.random().toString(36).slice(2, 8)}`,
+        name: node.name?.trim() || "Node",
+        x: this.clampPercent(Number(node.x)),
+        y: this.clampPercent(Number(node.y))
+      }));
+      const links = (config.links ?? []).filter(
+        (link) => nodes.some((n) => n.id === link.from) && nodes.some((n) => n.id === link.to)
+      );
+      return { title, nodes, links };
+    }
+    const legacyNodes = DEFAULT_NODES.map((node) => ({
+      ...node,
+      entity: config.entities?.[node.id],
+      image: config.images?.[node.id]
+    }));
+    return {
+      title,
+      nodes: legacyNodes,
+      links: DEFAULT_LINKS
+    };
+  }
+  renderNode(node) {
+    const value = this.getState(node.entity);
+    const unit = node.unit ?? this.getUnit(node.entity);
+    const safeName = this.safeText(node.name);
+    const image = node.image?.trim();
+    const media = image ? `<img src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
+    return `
+      <article class="node" style="left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
+        <div class="node-media">${media}</div>
+        <div class="node-label">${safeName}</div>
+        <div class="node-value">${this.safeText(value)} ${this.safeText(unit)}</div>
       </article>
-    `}resolveLinkDirection(e){if(!e.entity)return"idle";let t=this.parseNumber(e.entity);return e.invert&&(t=-t),t>0?"forward":t<0?"reverse":"idle"}renderLinks(e,t){let r=new Map(e.map(a=>[a.id,a]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${t.map((a,n)=>{let o=r.get(a.from),s=r.get(a.to);if(!o||!s)return"";let l=this.resolveLinkDirection(a),c=a.label?.trim()?`<title>${this.safeText(a.label)}</title>`:"";return`<line class="flow-line ${l}" x1="${o.x}" y1="${o.y}" x2="${s.x}" y2="${s.y}">${c}</line>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let t=this.normalizeConfig(this._config??p.getStubConfig());e.innerHTML=`
+    `;
+  }
+  resolveLinkDirection(link) {
+    if (!link.entity) {
+      return "idle";
+    }
+    let value = this.parseNumber(link.entity);
+    if (link.invert) {
+      value = -value;
+    }
+    if (value > 0) {
+      return "forward";
+    }
+    if (value < 0) {
+      return "reverse";
+    }
+    return "idle";
+  }
+  renderLinks(nodes, links) {
+    const lookup = new Map(nodes.map((node) => [node.id, node]));
+    const lines = links.map((link, idx) => {
+      const from = lookup.get(link.from);
+      const to = lookup.get(link.to);
+      if (!from || !to) {
+        return "";
+      }
+      const direction = this.resolveLinkDirection(link);
+      const label = link.label?.trim() ? `<title>${this.safeText(link.label)}</title>` : "";
+      return `<line class="flow-line ${direction}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${label}</line>`;
+    }).join("");
+    return `<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>`;
+  }
+  render() {
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+    const root = this.shadowRoot;
+    if (!root) {
+      return;
+    }
+    const normalized = this.normalizeConfig(this._config ?? _MergnerPvCard.getStubConfig());
+    root.innerHTML = `
       <style>
         :host {
           display: block;
@@ -137,32 +282,162 @@ var f=[{id:"solar",name:"Solar",x:20,y:20},{id:"battery",name:"Battery",x:80,y:2
       </style>
 
       <ha-card>
-        <div class="title">${this.safeText(t.title)}</div>
+        <div class="title">${this.safeText(normalized.title)}</div>
         <div class="flow-wrap">
-          ${this.renderLinks(t.nodes,t.links)}
-          ${t.nodes.map(r=>this.renderNode(r)).join("")}
+          ${this.renderLinks(normalized.nodes, normalized.links)}
+          ${normalized.nodes.map((node) => this.renderNode(node)).join("")}
         </div>
       </ha-card>
-    `}},m=class extends HTMLElement{_config;setConfig(e){this._config={...d.getStubConfig(),...e},this.render()}connectedCallback(){this.render()}get safeConfig(){return this._config??d.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}renderNodeRows(e){return e.map((t,r)=>`
-          <div class="row" data-kind="node" data-index="${r}">
-            <input data-field="id" value="${t.id}" placeholder="id" />
-            <input data-field="name" value="${t.name}" placeholder="Name" />
-            <input data-field="entity" value="${t.entity??""}" placeholder="sensor.xyz" />
-            <input data-field="image" value="${t.image??""}" placeholder="/local/pv/icon.png" />
-            <input data-field="x" type="number" min="0" max="100" value="${t.x}" />
-            <input data-field="y" type="number" min="0" max="100" value="${t.y}" />
+    `;
+  }
+};
+var MergnerPvCardEditor = class extends HTMLElement {
+  _config;
+  setConfig(config) {
+    this._config = {
+      ...MergnerPvCard.getStubConfig(),
+      ...config
+    };
+    this.render();
+  }
+  connectedCallback() {
+    this.render();
+  }
+  get safeConfig() {
+    return this._config ?? MergnerPvCard.getStubConfig();
+  }
+  emitConfig(newConfig) {
+    this._config = newConfig;
+    this.dispatchEvent(
+      new CustomEvent("config-changed", {
+        detail: { config: newConfig },
+        bubbles: true,
+        composed: true
+      })
+    );
+    this.render();
+  }
+  renderNodeRows(nodes) {
+    return nodes.map(
+      (node, idx) => `
+          <div class="row" data-kind="node" data-index="${idx}">
+            <input data-field="id" value="${node.id}" placeholder="id" />
+            <input data-field="name" value="${node.name}" placeholder="Name" />
+            <input data-field="entity" value="${node.entity ?? ""}" placeholder="sensor.xyz" />
+            <input data-field="image" value="${node.image ?? ""}" placeholder="/local/pv/icon.png" />
+            <input data-field="x" type="number" min="0" max="100" value="${node.x}" />
+            <input data-field="y" type="number" min="0" max="100" value="${node.y}" />
             <button data-action="remove-node">X</button>
           </div>
-        `).join("")}renderLinkRows(e,t){let r=t.map(i=>`<option value="${i.id}">${i.name} (${i.id})</option>`).join("");return e.map((i,a)=>`
-        <div class="row" data-kind="link" data-index="${a}">
-          <select data-field="from">${r}</select>
-          <select data-field="to">${r}</select>
-          <input data-field="entity" value="${i.entity??""}" placeholder="sensor.flow_power" />
-          <input data-field="label" value="${i.label??""}" placeholder="Label optional" />
-          <label class="invert"><input data-field="invert" type="checkbox" ${i.invert?"checked":""} />invert</label>
+        `
+    ).join("");
+  }
+  renderLinkRows(links, nodes) {
+    const options = nodes.map((node) => `<option value="${node.id}">${node.name} (${node.id})</option>`).join("");
+    return links.map((link, idx) => `
+        <div class="row" data-kind="link" data-index="${idx}">
+          <select data-field="from">${options}</select>
+          <select data-field="to">${options}</select>
+          <input data-field="entity" value="${link.entity ?? ""}" placeholder="sensor.flow_power" />
+          <input data-field="label" value="${link.label ?? ""}" placeholder="Label optional" />
+          <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
           <button data-action="remove-link">X</button>
         </div>
-      `).join("")}wireEvents(e,t){let r=this.shadowRoot;r&&(r.querySelectorAll(".row[data-kind='node']").forEach((i,a)=>{i.querySelectorAll("input[data-field]").forEach(n=>{n.addEventListener("change",()=>{let o=n.dataset.field,s=[...e],l=n.type==="number"?Number(n.value):n.value;s[a][o]=l,this.emitConfig({...this.safeConfig,nodes:s,links:t})})}),i.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let n=e.filter((l,c)=>c!==a),o=new Set(n.map(l=>l.id)),s=t.filter(l=>o.has(l.from)&&o.has(l.to));this.emitConfig({...this.safeConfig,nodes:n,links:s})})}),r.querySelectorAll(".row[data-kind='link']").forEach((i,a)=>{i.querySelectorAll("input[data-field], select[data-field]").forEach(n=>{if(n instanceof HTMLInputElement&&n.type==="checkbox"){n.addEventListener("change",()=>{let o=[...t];o[a]={...o[a],invert:n.checked},this.emitConfig({...this.safeConfig,nodes:e,links:o})});return}n.addEventListener("change",()=>{let o=n.dataset.field,s=[...t];s[a]={...s[a],[o]:n.value},this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),i.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let n=t.filter((o,s)=>s!==a);this.emitConfig({...this.safeConfig,nodes:e,links:n})})}),r.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let i=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:i,links:t})}),r.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let i=[...t,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:i})}),r.querySelectorAll(".row[data-kind='link']").forEach((i,a)=>{let n=i.querySelectorAll("select[data-field]"),o=t[a];n[0]&&(n[0].value=o.from),n[1]&&(n[1].value=o.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let t=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:f,r=this.safeConfig.links??g;e.innerHTML=`
+      `).join("");
+  }
+  wireEvents(nodes, links) {
+    const root = this.shadowRoot;
+    if (!root) {
+      return;
+    }
+    root.querySelectorAll(".row[data-kind='node']").forEach((row, index) => {
+      row.querySelectorAll("input[data-field]").forEach((input) => {
+        input.addEventListener("change", () => {
+          const field = input.dataset.field;
+          const nextNodes = [...nodes];
+          const value = input.type === "number" ? Number(input.value) : input.value;
+          nextNodes[index][field] = value;
+          this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
+        });
+      });
+      row.querySelector("button[data-action='remove-node']")?.addEventListener("click", () => {
+        const nextNodes = nodes.filter((_, i) => i !== index);
+        const validIds = new Set(nextNodes.map((node) => node.id));
+        const nextLinks = links.filter((link) => validIds.has(link.from) && validIds.has(link.to));
+        this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links: nextLinks });
+      });
+    });
+    root.querySelectorAll(".row[data-kind='link']").forEach((row, index) => {
+      row.querySelectorAll("input[data-field], select[data-field]").forEach((input) => {
+        if (input instanceof HTMLInputElement && input.type === "checkbox") {
+          input.addEventListener("change", () => {
+            const nextLinks = [...links];
+            nextLinks[index] = { ...nextLinks[index], invert: input.checked };
+            this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
+          });
+          return;
+        }
+        input.addEventListener("change", () => {
+          const field = input.dataset.field;
+          const nextLinks = [...links];
+          nextLinks[index] = { ...nextLinks[index], [field]: input.value };
+          this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
+        });
+      });
+      row.querySelector("button[data-action='remove-link']")?.addEventListener("click", () => {
+        const nextLinks = links.filter((_, i) => i !== index);
+        this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
+      });
+    });
+    root.querySelector("button[data-action='add-node']")?.addEventListener("click", () => {
+      const nextNodes = [
+        ...nodes,
+        {
+          id: `node_${nodes.length + 1}`,
+          name: `Node ${nodes.length + 1}`,
+          x: 50,
+          y: 50
+        }
+      ];
+      this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
+    });
+    root.querySelector("button[data-action='add-link']")?.addEventListener("click", () => {
+      if (nodes.length < 2) {
+        return;
+      }
+      const nextLinks = [
+        ...links,
+        {
+          from: nodes[0].id,
+          to: nodes[1].id,
+          entity: "",
+          invert: false
+        }
+      ];
+      this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
+    });
+    root.querySelectorAll(".row[data-kind='link']").forEach((row, index) => {
+      const selects = row.querySelectorAll("select[data-field]");
+      const link = links[index];
+      if (selects[0]) {
+        selects[0].value = link.from;
+      }
+      if (selects[1]) {
+        selects[1].value = link.to;
+      }
+    });
+  }
+  render() {
+    if (!this.shadowRoot) {
+      this.attachShadow({ mode: "open" });
+    }
+    const root = this.shadowRoot;
+    if (!root) {
+      return;
+    }
+    const nodes = this.safeConfig.nodes && this.safeConfig.nodes.length > 0 ? this.safeConfig.nodes : DEFAULT_NODES;
+    const links = this.safeConfig.links ?? DEFAULT_LINKS;
+    root.innerHTML = `
       <style>
         :host {
           display: block;
@@ -223,15 +498,32 @@ var f=[{id:"solar",name:"Solar",x:20,y:20},{id:"battery",name:"Battery",x:80,y:2
       <div class="editor">
         <div class="topline">
           <label>Title</label>
-          <input id="title" value="${this.safeConfig.title??"PV Flow"}" placeholder="PV Flow" />
+          <input id="title" value="${this.safeConfig.title ?? "PV Flow"}" placeholder="PV Flow" />
         </div>
 
         <h4>Nodes</h4>
-        ${this.renderNodeRows(t)}
+        ${this.renderNodeRows(nodes)}
         <div class="actions"><button data-action="add-node">Add node</button></div>
 
         <h4>Links</h4>
-        ${this.renderLinkRows(r,t)}
+        ${this.renderLinkRows(links, nodes)}
         <div class="actions"><button data-action="add-link">Add link</button></div>
       </div>
-    `;let i=e.querySelector("#title");i?.addEventListener("change",()=>{this.emitConfig({...this.safeConfig,title:i.value,nodes:t,links:r})}),this.wireEvents(t,r)}};customElements.define("mergner-pv-card",d);customElements.define("mergner-pv-card-editor",m);window.customCards=window.customCards||[];window.customCards.push({type:"mergner-pv-card",name:"Mergner PV Card",description:"Dynamic PV flow card with visual editor",preview:!0});
+    `;
+    const titleInput = root.querySelector("#title");
+    titleInput?.addEventListener("change", () => {
+      this.emitConfig({ ...this.safeConfig, title: titleInput.value, nodes, links });
+    });
+    this.wireEvents(nodes, links);
+  }
+};
+customElements.define("mergner-pv-card", MergnerPvCard);
+customElements.define("mergner-pv-card-editor", MergnerPvCardEditor);
+window.customCards = window.customCards || [];
+window.customCards.push({
+  type: "mergner-pv-card",
+  name: "Mergner PV Card",
+  description: "Dynamic PV flow card with visual editor",
+  preview: true
+});
+//# sourceMappingURL=mergner-pv-card.js.map

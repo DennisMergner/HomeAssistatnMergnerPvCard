@@ -8,7 +8,7 @@ const options = {
   bundle: true,
   format: "esm",
   target: "es2022",
-  outfile: "dist/mergner-pv-card.js",
+  outfile: "mergner-pv-card.js",
   minify: !watch,
   sourcemap: watch,
   legalComments: "none"
@@ -20,5 +20,5 @@ if (watch) {
   console.log("Watching for changes...");
 } else {
   await build(options);
-  console.log("Build complete: dist/mergner-pv-card.js");
+  console.log("Build complete: mergner-pv-card.js");
 }
