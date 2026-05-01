@@ -745,6 +745,20 @@ var MergnerPvCardEditor = class extends HTMLElement {
     }
     return Math.max(2, Math.min(98, value));
   }
+  getNodeRadiusPercent(node) {
+    const size = this.clampEditorNodeSize(Number(node.size ?? 120));
+    const diameterPercent = Math.max(8, Math.min(36, size / 120 * 18));
+    return diameterPercent / 2;
+  }
+  clampNodePosition(node, x, y) {
+    const radius = this.getNodeRadiusPercent(node);
+    const min = Math.max(2, radius);
+    const max = Math.min(98, 100 - radius);
+    return {
+      x: Math.max(min, Math.min(max, this.clampEditorPercent(x))),
+      y: Math.max(min, Math.min(max, this.clampEditorPercent(y)))
+    };
+  }
   normalizeEditorConfig(config) {
     const base = MergnerPvCard.getStubConfig();
     const incoming = config ?? {};
@@ -754,15 +768,22 @@ var MergnerPvCardEditor = class extends HTMLElement {
       title: (incoming.title ?? base.title ?? "PV Flow").toString()
     };
     const rawNodes = Array.isArray(incoming.nodes) && incoming.nodes.length > 0 ? incoming.nodes : base.nodes ?? [];
-    const nodes = rawNodes.map((node, index) => ({
-      ...node,
-      id: (node.id ?? `node_${index + 1}`).toString().trim() || `node_${index + 1}`,
-      name: (node.name ?? `Node ${index + 1}`).toString().trim() || `Node ${index + 1}`,
-      role: node.role ?? "custom",
-      x: this.clampEditorPercent(Number(node.x)),
-      y: this.clampEditorPercent(Number(node.y)),
-      size: this.clampEditorNodeSize(Number(node.size ?? 120))
-    }));
+    const nodes = rawNodes.map((node, index) => {
+      const normalizedNode = {
+        ...node,
+        id: (node.id ?? `node_${index + 1}`).toString().trim() || `node_${index + 1}`,
+        name: (node.name ?? `Node ${index + 1}`).toString().trim() || `Node ${index + 1}`,
+        role: node.role ?? "custom",
+        x: this.clampEditorPercent(Number(node.x)),
+        y: this.clampEditorPercent(Number(node.y)),
+        size: this.clampEditorNodeSize(Number(node.size ?? 120))
+      };
+      const clampedPosition = this.clampNodePosition(normalizedNode, normalizedNode.x, normalizedNode.y);
+      return {
+        ...normalizedNode,
+        ...clampedPosition
+      };
+    });
     const validIds = new Set(nodes.map((node) => node.id));
     const rawLinks = Array.isArray(incoming.links) ? incoming.links : base.links ?? [];
     const links = rawLinks.filter((link) => validIds.has(link.from) && validIds.has(link.to));
@@ -805,7 +826,13 @@ var MergnerPvCardEditor = class extends HTMLElement {
   }
   updateNode(nodes, links, index, patch) {
     const nextNodes = [...nodes];
-    nextNodes[index] = { ...nextNodes[index], ...patch };
+    const mergedNode = { ...nextNodes[index], ...patch };
+    const clampedPosition = this.clampNodePosition(mergedNode, Number(mergedNode.x), Number(mergedNode.y));
+    nextNodes[index] = {
+      ...mergedNode,
+      ...clampedPosition,
+      size: this.clampEditorNodeSize(Number(mergedNode.size ?? 120))
+    };
     this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
   }
   bindDragEvents() {
@@ -966,10 +993,10 @@ var MergnerPvCardEditor = class extends HTMLElement {
       return this._layoutZoom;
     }
     const maxNodeSize = Math.max(...nodes.map((node) => this.clampEditorNodeSize(Number(node.size ?? 120))), 120);
-    const densityFactor = nodes.length >= 8 ? 0.78 : nodes.length >= 6 ? 0.86 : nodes.length >= 4 ? 0.93 : 1;
-    const targetNodePx = 84;
+    const densityFactor = nodes.length >= 8 ? 0.84 : nodes.length >= 6 ? 0.9 : nodes.length >= 4 ? 0.96 : 1;
+    const targetNodePx = 96;
     const autoZoom = Math.round(targetNodePx / maxNodeSize * 100 * densityFactor);
-    return Math.max(50, Math.min(160, autoZoom));
+    return Math.max(65, Math.min(160, autoZoom));
   }
   projectLayoutPosition(value, zoom) {
     const factor = zoom / 100;
@@ -1000,8 +1027,16 @@ var MergnerPvCardEditor = class extends HTMLElement {
     const nodes = this.safeConfig.nodes && this.safeConfig.nodes.length > 0 ? this.safeConfig.nodes : DEFAULT_NODES;
     const links = this.safeConfig.links ?? DEFAULT_LINKS;
     const effectiveZoom = this.getEffectiveLayoutZoom(nodes);
-    const xInCanvas = Math.max(4, Math.min(96, (event.clientX - rect.left) / rect.width * 100));
-    const yInCanvas = Math.max(4, Math.min(96, (event.clientY - rect.top) / rect.height * 100));
+    const activeNode = nodes[this._dragNodeIndex];
+    if (!activeNode) {
+      return;
+    }
+    const zoomFactor = effectiveZoom / 100;
+    const layoutSize = Math.max(24, Math.min(220, Math.round((activeNode.size ?? 120) * zoomFactor)));
+    const xEdgePadding = layoutSize / 2 / rect.width * 100;
+    const yEdgePadding = layoutSize / 2 / rect.height * 100;
+    const xInCanvas = Math.max(xEdgePadding, Math.min(100 - xEdgePadding, (event.clientX - rect.left) / rect.width * 100));
+    const yInCanvas = Math.max(yEdgePadding, Math.min(100 - yEdgePadding, (event.clientY - rect.top) / rect.height * 100));
     const x = this.unprojectLayoutPosition(xInCanvas, effectiveZoom);
     const y = this.unprojectLayoutPosition(yInCanvas, effectiveZoom);
     this.updateNode(nodes, links, this._dragNodeIndex, { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) });
