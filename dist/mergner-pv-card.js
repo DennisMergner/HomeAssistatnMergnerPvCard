@@ -258,6 +258,35 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       links: DEFAULT_LINKS
     };
   }
+  toNodeSizePercent(size) {
+    const clamped = this.clampNodeSize(size);
+    const percent = clamped / 120 * 18;
+    return Math.max(8, Math.min(36, percent));
+  }
+  fitNodesToCard(nodes) {
+    const baseNodes = nodes.map((node) => ({
+      ...node,
+      x: this.clampPercent(Number(node.x)),
+      y: this.clampPercent(Number(node.y)),
+      renderSize: this.toNodeSizePercent(Number(node.size ?? 120))
+    }));
+    let fitZoom = 1;
+    for (const node of baseNodes) {
+      const radius = node.renderSize / 2;
+      const dx = Math.abs(node.x - 50);
+      const dy = Math.abs(node.y - 50);
+      const xLimit = 50 / Math.max(1, dx + radius);
+      const yLimit = 50 / Math.max(1, dy + radius);
+      fitZoom = Math.min(fitZoom, xLimit, yLimit);
+    }
+    fitZoom = Math.max(0.22, Math.min(1, fitZoom));
+    return baseNodes.map((node) => ({
+      ...node,
+      x: 50 + (node.x - 50) * fitZoom,
+      y: 50 + (node.y - 50) * fitZoom,
+      renderSize: node.renderSize * fitZoom
+    }));
+  }
   renderNode(node) {
     const role = this.getNodeRole(node);
     const metrics = this.getNodeMetrics(node);
@@ -265,7 +294,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     const extraMetrics = metrics.slice(1);
     const batteryLevel = role === "battery" ? this.getBatteryLevel(metrics) : void 0;
     const safeName = this.safeText(node.name);
-    const nodeSize = this.clampNodeSize(Number(node.size ?? 120));
+    const nodeSize = Math.max(4, Math.min(40, node.renderSize));
     const image = node.image?.trim();
     const media = `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
     const batteryStateClass = role === "battery" && primaryMetric && !Number.isNaN(primaryMetric.numericValue) ? primaryMetric.numericValue > 0 ? "is-charging" : primaryMetric.numericValue < 0 ? "is-discharging" : "is-idle" : "";
@@ -283,7 +312,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           </div>
         `;
     return `
-      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}px; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
+      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}%; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
         <div class="node-orb ${image ? "has-image" : ""}">
           ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
           <div class="node-overlay">
@@ -370,6 +399,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       return;
     }
     const normalized = this.normalizeConfig(this._config ?? _MergnerPvCard.getStubConfig());
+    const fittedNodes = this.fitNodesToCard(normalized.nodes);
     root.innerHTML = `
       <style>
         :host {
@@ -684,8 +714,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         <div class="title">${this.safeText(normalized.title)}</div>
         ${this.renderSummary(normalized.nodes)}
         <div class="flow-wrap">
-          ${this.renderLinks(normalized.nodes, normalized.links)}
-          ${normalized.nodes.map((node) => this.renderNode(node)).join("")}
+          ${this.renderLinks(fittedNodes, normalized.links)}
+          ${fittedNodes.map((node) => this.renderNode(node)).join("")}
         </div>
       </ha-card>
     `;
@@ -897,7 +927,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
             aria-label="Drag ${this.safeText(node.name)}"
           >
             ${image ? `<img class="layout-node-bg-image" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
-            <div class="layout-node-overlay">
+            <div class="layout-node-overlay ${image ? "with-image" : ""}">
               ${image ? "" : `<div class="layout-node-media">${media}</div>`}
               <div class="layout-node-label">${this.safeText(node.name)}</div>
             </div>
@@ -1404,6 +1434,11 @@ var MergnerPvCardEditor = class extends HTMLElement {
           gap: 6px;
           padding: 10px 8px;
           box-sizing: border-box;
+        }
+
+        .layout-node-overlay.with-image {
+          align-content: end;
+          background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.6) 100%);
         }
 
         .layout-node:active {
