@@ -857,6 +857,13 @@ class MergnerPvCardEditor extends HTMLElement {
   private _layoutZoom = 100;
   private _layoutZoomMode: "auto" | "manual" = "auto";
 
+  private clampEditorNodeSize(value: number): number {
+    if (Number.isNaN(value)) {
+      return 120;
+    }
+    return Math.max(40, Math.min(320, value));
+  }
+
   private safeText(input: string): string {
     return input
       .replaceAll("&", "&amp;")
@@ -1104,7 +1111,7 @@ class MergnerPvCardEditor extends HTMLElement {
       return this._layoutZoom;
     }
 
-    const maxNodeSize = Math.max(...nodes.map((node) => this.clampNodeSize(Number(node.size ?? 120))), 120);
+    const maxNodeSize = Math.max(...nodes.map((node) => this.clampEditorNodeSize(Number(node.size ?? 120))), 120);
     const densityFactor = nodes.length >= 8 ? 0.78 : nodes.length >= 6 ? 0.86 : nodes.length >= 4 ? 0.93 : 1;
     const targetNodePx = 84;
     const autoZoom = Math.round((targetNodePx / maxNodeSize) * 100 * densityFactor);
