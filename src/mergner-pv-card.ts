@@ -1123,6 +1123,7 @@ class MergnerPvCardEditor extends HTMLElement {
   private _entityIdsSignature = "";
   private _layoutZoom = 100;
   private _layoutZoomMode: "auto" | "manual" = "auto";
+  private _collapsedSections = new Set<string>();
 
   private clampEditorNodeSize(value: number): number {
     if (Number.isNaN(value)) {
@@ -1559,12 +1560,17 @@ class MergnerPvCardEditor extends HTMLElement {
 
     return nodes
       .map(
-        (node, idx) => `
-          <section class="node-card" data-kind="node" data-index="${idx}">
+        (node, idx) => {
+          const sectionKey = `node-${idx}`;
+          const isCollapsed = this._collapsedSections.has(sectionKey);
+          return `
+          <section class="node-card ${isCollapsed ? "collapsed" : ""}" data-kind="node" data-index="${idx}">
             <div class="card-head">
-              <strong>Node ${idx + 1}</strong>
+              <button class="collapse-toggle" data-action="toggle-section" data-section="${sectionKey}" type="button">${isCollapsed ? "▶" : "▼"}</button>
+              <strong>${this.safeText(node.name || node.id)}</strong>
               <button data-action="remove-node" type="button">Remove</button>
             </div>
+            ${isCollapsed ? "" : `
             <div class="node-grid">
               <label>
                 <span>ID</span>
@@ -1659,8 +1665,10 @@ class MergnerPvCardEditor extends HTMLElement {
                 </label>
               </section>
             </div>
+            `}
           </section>
-        `
+        `;
+        }
       )
       .join("");
   }
@@ -1672,12 +1680,19 @@ class MergnerPvCardEditor extends HTMLElement {
 
     return links
       .map(
-        (link, idx) => `
-          <section class="row link-card" data-kind="link" data-index="${idx}">
+        (link, idx) => {
+          const sectionKey = `link-${idx}`;
+          const isCollapsed = this._collapsedSections.has(sectionKey);
+          const fromNodeName = nodes.find((n) => n.id === link.from)?.name || link.from;
+          const toNodeName = nodes.find((n) => n.id === link.to)?.name || link.to;
+          return `
+          <section class="row link-card ${isCollapsed ? "collapsed" : ""}" data-kind="link" data-index="${idx}">
             <div class="card-head">
-              <strong>Flow ${idx + 1}</strong>
+              <button class="collapse-toggle" data-action="toggle-section" data-section="${sectionKey}" type="button">${isCollapsed ? "▶" : "▼"}</button>
+              <strong>${this.safeText(fromNodeName)} → ${this.safeText(toNodeName)}</strong>
               <button data-action="remove-link" type="button">Remove flow</button>
             </div>
+            ${isCollapsed ? "" : `
             <p class="link-hint">Configure source/target first. Use either a single signed sensor or separate forward/reverse sensors for bidirectional flows.</p>
             <div class="link-grid">
               <label>
@@ -1739,8 +1754,10 @@ class MergnerPvCardEditor extends HTMLElement {
                 <input data-field="valueUnit" value="${this.safeText(link.valueUnit ?? "")}" placeholder="auto / W / kW" />
               </label>
             </div>
+            `}
           </section>
-        `
+        `;
+        }
       )
       .join("");
   }
@@ -1750,6 +1767,23 @@ class MergnerPvCardEditor extends HTMLElement {
     if (!root) {
       return;
     }
+
+    root.querySelectorAll<HTMLButtonElement>("button[data-action='toggle-section']").forEach((button) => {
+      button.addEventListener("click", () => {
+        const section = button.dataset.section;
+        if (!section) {
+          return;
+        }
+
+        if (this._collapsedSections.has(section)) {
+          this._collapsedSections.delete(section);
+        } else {
+          this._collapsedSections.add(section);
+        }
+
+        this.render();
+      });
+    });
 
     root.querySelectorAll<HTMLInputElement>("input[data-action='entity-search']").forEach((searchInput) => {
       searchInput.addEventListener("input", () => {
@@ -2147,6 +2181,15 @@ class MergnerPvCardEditor extends HTMLElement {
           background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
         }
 
+        .node-card.collapsed {
+          gap: 0;
+          padding: 8px 12px;
+        }
+
+        .node-card.collapsed > :not(.card-head) {
+          display: none;
+        }
+
         .card-head {
           display: flex;
           align-items: center;
@@ -2154,8 +2197,33 @@ class MergnerPvCardEditor extends HTMLElement {
           gap: 8px;
         }
 
+        .collapse-toggle {
+          flex-shrink: 0;
+          width: 24px;
+          height: 24px;
+          padding: 0;
+          border: none;
+          background: transparent;
+          color: currentColor;
+          cursor: pointer;
+          font-size: 12px;
+          line-height: 1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: transform 0.2s ease;
+        }
+
+        .collapse-toggle:hover {
+          opacity: 0.8;
+        }
+
         .card-head strong {
           font-size: 0.95rem;
+          flex: 1;
+          text-overflow: ellipsis;
+          overflow: hidden;
+          white-space: nowrap;
         }
 
         .node-grid,
@@ -2252,6 +2320,15 @@ class MergnerPvCardEditor extends HTMLElement {
           border-radius: 14px;
           border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
           background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
+        }
+
+        .link-card.collapsed {
+          gap: 0;
+          padding: 8px 12px;
+        }
+
+        .link-card.collapsed > :not(.card-head) {
+          display: none;
         }
 
         .link-hint {
