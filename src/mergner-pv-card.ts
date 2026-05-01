@@ -3,6 +3,9 @@ type EntityState = {
   attributes?: Record<string, unknown>;
 };
 
+declare const __MERGNER_PV_CARD_VERSION__: string;
+const CARD_VERSION = __MERGNER_PV_CARD_VERSION__;
+
 type HomeAssistant = {
   states: Record<string, EntityState>;
 };
@@ -762,6 +765,21 @@ class MergnerPvCard extends HTMLElement {
           letter-spacing: 0.02em;
         }
 
+        .card-version {
+          position: absolute;
+          right: 10px;
+          bottom: 8px;
+          font-size: 0.66rem;
+          letter-spacing: 0.04em;
+          color: rgba(224, 248, 248, 0.64);
+          background: rgba(0, 0, 0, 0.28);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 999px;
+          padding: 2px 8px;
+          line-height: 1;
+          z-index: 3;
+        }
+
         .summary-row {
           display: grid;
           grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -1052,6 +1070,7 @@ class MergnerPvCard extends HTMLElement {
           ${this.renderLinks(fittedNodes, normalized.links, normalized.flowStyle)}
           ${fittedNodes.map((node) => this.renderNode(node)).join("")}
         </div>
+        <div class="card-version">v${this.safeText(CARD_VERSION)}</div>
       </ha-card>
     `;
   }
@@ -2291,6 +2310,18 @@ class MergnerPvCardEditor extends HTMLElement {
           gap: 6px;
         }
 
+        .editor-version {
+          justify-self: end;
+          margin-top: 2px;
+          font-size: 0.76rem;
+          color: var(--secondary-text-color);
+          background: color-mix(in srgb, var(--secondary-background-color, rgba(127, 127, 127, 0.08)) 80%, transparent);
+          border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.35));
+          border-radius: 999px;
+          padding: 3px 10px;
+          line-height: 1;
+        }
+
         .actions {
           display: flex;
           gap: 8px;
@@ -2339,6 +2370,7 @@ class MergnerPvCardEditor extends HTMLElement {
         <section class="panel">
           <h3 class="panel-title">General</h3>
           <p class="panel-copy">Set the card title first. Then add devices and connect their flows below.</p>
+          <div class="editor-version">Build v${this.safeText(CARD_VERSION)}</div>
           <div class="topline">
             <label>
               <span>Title</span>
