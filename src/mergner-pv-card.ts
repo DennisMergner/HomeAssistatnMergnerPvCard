@@ -1123,7 +1123,7 @@ class MergnerPvCardEditor extends HTMLElement {
   private _entityIdsSignature = "";
   private _layoutZoom = 100;
   private _layoutZoomMode: "auto" | "manual" = "auto";
-  private _collapsedSections = new Set<string>();
+  private _expandedSections = new Set<string>();
 
   private clampEditorNodeSize(value: number): number {
     if (Number.isNaN(value)) {
@@ -1562,7 +1562,7 @@ class MergnerPvCardEditor extends HTMLElement {
       .map(
         (node, idx) => {
           const sectionKey = `node-${idx}`;
-          const isCollapsed = this._collapsedSections.has(sectionKey);
+          const isCollapsed = !this._expandedSections.has(sectionKey);
           return `
           <section class="node-card ${isCollapsed ? "collapsed" : ""}" data-kind="node" data-index="${idx}">
             <div class="card-head">
@@ -1682,7 +1682,7 @@ class MergnerPvCardEditor extends HTMLElement {
       .map(
         (link, idx) => {
           const sectionKey = `link-${idx}`;
-          const isCollapsed = this._collapsedSections.has(sectionKey);
+          const isCollapsed = !this._expandedSections.has(sectionKey);
           const fromNodeName = nodes.find((n) => n.id === link.from)?.name || link.from;
           const toNodeName = nodes.find((n) => n.id === link.to)?.name || link.to;
           return `
@@ -1775,10 +1775,10 @@ class MergnerPvCardEditor extends HTMLElement {
           return;
         }
 
-        if (this._collapsedSections.has(section)) {
-          this._collapsedSections.delete(section);
+        if (this._expandedSections.has(section)) {
+          this._expandedSections.delete(section);
         } else {
-          this._collapsedSections.add(section);
+          this._expandedSections.add(section);
         }
 
         this.render();
