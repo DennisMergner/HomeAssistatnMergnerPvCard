@@ -903,6 +903,8 @@ var MergnerPvCardEditor = class extends HTMLElement {
   _layoutZoom = 100;
   _layoutZoomMode = "auto";
   _expandedSections = /* @__PURE__ */ new Set();
+  _openEntityPicker;
+  _entitySearchTerms = /* @__PURE__ */ new Map();
   clampEditorNodeSize(value) {
     if (Number.isNaN(value)) {
       return 120;
@@ -1056,6 +1058,10 @@ var MergnerPvCardEditor = class extends HTMLElement {
   getEntityIds() {
     return Object.keys(this._hass?.states ?? {}).sort((left, right) => left.localeCompare(right));
   }
+  getEntityFriendlyName(entityId) {
+    const name = this._hass?.states?.[entityId]?.attributes?.friendly_name;
+    return typeof name === "string" && name.trim() ? name.trim() : "";
+  }
   getEntityUnit(entityId) {
     const attributes = this._hass?.states?.[entityId]?.attributes;
     const unit = attributes?.unit_of_measurement;
@@ -1095,30 +1101,71 @@ var MergnerPvCardEditor = class extends HTMLElement {
   renderEntitySelect(selectorId, field, value, placeholder = "Select entity", filter = "any") {
     const entityIds = this.getEntityIds();
     const selectedValue = value?.trim() ?? "";
-    const customOption = selectedValue && !entityIds.includes(selectedValue) ? `<option value="${this.safeText(selectedValue)}" selected>${this.safeText(selectedValue)}</option>` : "";
-    const preferredEntityIds = entityIds.filter((entityId) => this.matchesEntityFilter(entityId, filter));
-    const remainingEntityIds = entityIds.filter((entityId) => !preferredEntityIds.includes(entityId));
-    const renderOptions = (options) => options.map((entityId) => {
-      const selected = entityId === selectedValue ? "selected" : "";
-      return `<option value="${this.safeText(entityId)}" ${selected}>${this.safeText(entityId)}</option>`;
-    }).join("");
-    const preferredGroup = preferredEntityIds.length > 0 ? `<optgroup label="Recommended">${renderOptions(preferredEntityIds)}</optgroup>` : "";
-    const allGroup = remainingEntityIds.length > 0 ? `<optgroup label="All entities">${renderOptions(remainingEntityIds)}</optgroup>` : "";
+    const searchTerm = this._entitySearchTerms.get(selectorId) ?? "";
+    const isOpen = this._openEntityPicker === selectorId;
+    const friendly = selectedValue ? this.getEntityFriendlyName(selectedValue) : "";
+    const triggerLabel = selectedValue ? friendly || selectedValue : placeholder;
+    const triggerSub = selectedValue && friendly ? `<span class="picker-trigger-id">${this.safeText(selectedValue)}</span>` : "";
+    const preferred = entityIds.filter((id) => this.matchesEntityFilter(id, filter));
+    const rest = entityIds.filter((id) => !preferred.includes(id));
+    const matchesTerm = (id) => {
+      if (!searchTerm) {
+        return true;
+      }
+      const lower = searchTerm.toLowerCase();
+      return id.toLowerCase().includes(lower) || this.getEntityFriendlyName(id).toLowerCase().includes(lower);
+    };
+    const renderGroup = (ids, groupLabel) => {
+      const filtered = ids.filter(matchesTerm);
+      if (!filtered.length) {
+        return "";
+      }
+      return `
+        <div class="picker-group">
+          <div class="picker-group-label">${this.safeText(groupLabel)}</div>
+          ${filtered.map((id) => {
+        const fname = this.getEntityFriendlyName(id);
+        const isSel = id === selectedValue;
+        return `
+              <div class="picker-option${isSel ? " is-selected" : ""}" data-value="${this.safeText(id)}" role="option" aria-selected="${isSel}">
+                ${fname ? `<span class="picker-option-name">${this.safeText(fname)}</span>` : ""}
+                <span class="picker-option-id">${this.safeText(id)}</span>
+              </div>`;
+      }).join("")}
+        </div>`;
+    };
+    const customOption = selectedValue && !entityIds.includes(selectedValue) ? `<div class="picker-option is-selected" data-value="${this.safeText(selectedValue)}" role="option">
+          <span class="picker-option-name">Custom</span>
+          <span class="picker-option-id">${this.safeText(selectedValue)}</span>
+        </div>` : "";
     return `
-      <div class="entity-select-wrap">
-        <input
-          type="search"
-          data-action="entity-search"
-          data-target="${this.safeText(selectorId)}"
-          placeholder="Search entities..."
-          aria-label="Search entities"
-        />
-        <select data-field="${String(field)}" data-entity-select-id="${this.safeText(selectorId)}">
-          <option value="">${this.safeText(placeholder)}</option>
-          ${customOption}
-          ${preferredGroup}
-          ${allGroup}
-        </select>
+      <div class="entity-picker" data-picker-id="${this.safeText(selectorId)}" data-field="${String(field)}">
+        <button class="picker-trigger ${selectedValue ? "has-value" : ""}" type="button" aria-haspopup="listbox" aria-expanded="${isOpen}">
+          <span class="picker-trigger-main">
+            <span class="picker-trigger-label">${this.safeText(triggerLabel)}</span>
+            ${triggerSub}
+          </span>
+          <span class="picker-trigger-arrow" aria-hidden="true">${isOpen ? "\u25B2" : "\u25BC"}</span>
+        </button>
+        ${isOpen ? `
+        <div class="picker-dropdown" role="listbox">
+          <input
+            type="search"
+            class="picker-search"
+            placeholder="Name oder ID suchen\u2026"
+            value="${this.safeText(searchTerm)}"
+            aria-label="Search entities"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <div class="picker-options">
+            ${selectedValue ? `<div class="picker-option picker-clear" data-value="" role="option"><span class="picker-option-name">\u2014 Auswahl l\xF6schen \u2014</span></div>` : ""}
+            ${customOption}
+            ${renderGroup(preferred, "Empfohlen")}
+            ${renderGroup(rest, "Alle Entit\xE4ten")}
+          </div>
+        </div>
+        ` : ""}
       </div>
     `;
   }
@@ -1469,6 +1516,55 @@ var MergnerPvCardEditor = class extends HTMLElement {
           this._expandedSections.add(section);
         }
         this.render();
+      });
+    });
+    root.querySelectorAll(".entity-picker").forEach((picker) => {
+      const pickerParentCard = picker.closest("[data-kind][data-index]");
+      if (!pickerParentCard) {
+        return;
+      }
+      const kind = pickerParentCard.dataset.kind;
+      const index = Number(pickerParentCard.dataset.index);
+      const field = picker.dataset.field;
+      const pickerId = picker.dataset.pickerId ?? "";
+      picker.querySelector(".picker-trigger")?.addEventListener("click", () => {
+        this._openEntityPicker = this._openEntityPicker === pickerId ? void 0 : pickerId;
+        this.render();
+      });
+      const searchInput = picker.querySelector(".picker-search");
+      if (searchInput) {
+        setTimeout(() => searchInput.focus(), 0);
+        searchInput.addEventListener("input", () => {
+          const term = searchInput.value;
+          this._entitySearchTerms.set(pickerId, term);
+          const lower = term.trim().toLowerCase();
+          picker.querySelectorAll(".picker-option").forEach((opt) => {
+            if (opt.classList.contains("picker-clear")) {
+              opt.hidden = false;
+              return;
+            }
+            const name = (opt.querySelector(".picker-option-name")?.textContent ?? "").toLowerCase();
+            const id = (opt.dataset.value ?? "").toLowerCase();
+            opt.hidden = lower.length > 0 && !name.includes(lower) && !id.includes(lower);
+          });
+          picker.querySelectorAll(".picker-group").forEach((group) => {
+            const visible = group.querySelectorAll(".picker-option:not([hidden])");
+            group.hidden = visible.length === 0;
+          });
+        });
+      }
+      picker.querySelectorAll(".picker-option").forEach((opt) => {
+        opt.addEventListener("click", () => {
+          const newValue = opt.dataset.value ?? "";
+          this._openEntityPicker = void 0;
+          if (kind === "node") {
+            this.updateNode(nodes, links, index, { [field]: newValue });
+          } else {
+            const nextLinks = [...links];
+            nextLinks[index] = { ...nextLinks[index], [field]: newValue };
+            this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
+          }
+        });
       });
     });
     root.querySelectorAll("input[data-action='entity-search']").forEach((searchInput) => {
@@ -1929,9 +2025,149 @@ var MergnerPvCardEditor = class extends HTMLElement {
           color: var(--secondary-text-color);
         }
 
-        .entity-select-wrap {
-          display: grid;
-          gap: 6px;
+        .entity-picker {
+          position: relative;
+        }
+
+        .picker-trigger {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          padding: 8px 10px;
+          border-radius: 8px;
+          border: 1px solid var(--divider-color, rgba(128,128,128,0.35));
+          background: var(--secondary-background-color, rgba(127,127,127,0.08));
+          color: var(--secondary-text-color);
+          cursor: pointer;
+          font-size: 0.82rem;
+          text-align: left;
+          min-height: 40px;
+        }
+
+        .picker-trigger.has-value {
+          color: var(--primary-text-color);
+        }
+
+        .picker-trigger:hover {
+          border-color: var(--primary-color, #03a9f4);
+        }
+
+        .picker-trigger-main {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          overflow: hidden;
+          flex: 1;
+        }
+
+        .picker-trigger-label {
+          font-size: 0.85rem;
+          font-weight: 500;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .picker-trigger-id {
+          font-size: 0.72rem;
+          opacity: 0.6;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .picker-trigger-arrow {
+          flex-shrink: 0;
+          font-size: 10px;
+          opacity: 0.6;
+        }
+
+        .picker-dropdown {
+          position: absolute;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          z-index: 999;
+          background: var(--card-background-color, #1c1c1c);
+          border: 1px solid var(--primary-color, #03a9f4);
+          border-radius: 10px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+          display: flex;
+          flex-direction: column;
+          max-height: 300px;
+          overflow: hidden;
+        }
+
+        .picker-search {
+          flex-shrink: 0;
+          border: none;
+          border-bottom: 1px solid var(--divider-color, rgba(128,128,128,0.3));
+          background: transparent;
+          color: var(--primary-text-color);
+          padding: 10px 12px;
+          font-size: 0.85rem;
+          outline: none;
+          border-radius: 10px 10px 0 0;
+        }
+
+        .picker-options {
+          overflow-y: auto;
+          flex: 1;
+        }
+
+        .picker-group {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .picker-group-label {
+          font-size: 0.72rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: var(--secondary-text-color);
+          padding: 6px 12px 4px;
+          opacity: 0.7;
+        }
+
+        .picker-option {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          padding: 8px 12px;
+          cursor: pointer;
+          transition: background 0.1s;
+        }
+
+        .picker-option:hover {
+          background: rgba(255,255,255,0.06);
+        }
+
+        .picker-option.is-selected {
+          background: rgba(3, 169, 244, 0.12);
+        }
+
+        .picker-option.picker-clear {
+          border-bottom: 1px solid var(--divider-color, rgba(128,128,128,0.2));
+          opacity: 0.65;
+        }
+
+        .picker-option-name {
+          font-size: 0.85rem;
+          font-weight: 500;
+          color: var(--primary-text-color);
+        }
+
+        .picker-option-id {
+          font-size: 0.72rem;
+          color: var(--secondary-text-color);
+          opacity: 0.75;
+        }
+
+        .picker-option.picker-clear .picker-option-name {
+          font-style: italic;
         }
 
         .image-tools {
