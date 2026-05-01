@@ -727,6 +727,7 @@ class MergnerPvCard extends HTMLElement {
 
 class MergnerPvCardEditor extends HTMLElement {
   private _config?: CardConfig;
+  private _hass?: HomeAssistant;
 
   private safeText(input: string): string {
     return input
@@ -741,6 +742,11 @@ class MergnerPvCardEditor extends HTMLElement {
       ...MergnerPvCard.getStubConfig(),
       ...config
     };
+    this.render();
+  }
+
+  set hass(hass: HomeAssistant) {
+    this._hass = hass;
     this.render();
   }
 
@@ -768,6 +774,32 @@ class MergnerPvCardEditor extends HTMLElement {
     const nextNodes = [...nodes];
     nextNodes[index] = { ...nextNodes[index], ...patch };
     this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
+  }
+
+  private getEntityIds(): string[] {
+    return Object.keys(this._hass?.states ?? {}).sort((left, right) => left.localeCompare(right));
+  }
+
+  private renderEntitySelect(field: keyof FlowNode | keyof FlowLink, value?: string, placeholder = "Select entity"): string {
+    const entityIds = this.getEntityIds();
+    const selectedValue = value?.trim() ?? "";
+    const customOption = selectedValue && !entityIds.includes(selectedValue)
+      ? `<option value="${this.safeText(selectedValue)}" selected>${this.safeText(selectedValue)}</option>`
+      : "";
+    const options = entityIds
+      .map((entityId) => {
+        const selected = entityId === selectedValue ? "selected" : "";
+        return `<option value="${this.safeText(entityId)}" ${selected}>${this.safeText(entityId)}</option>`;
+      })
+      .join("");
+
+    return `
+      <select data-field="${String(field)}">
+        <option value="">${this.safeText(placeholder)}</option>
+        ${customOption}
+        ${options}
+      </select>
+    `;
   }
 
   private readFileAsDataUrl(file: File): Promise<string> {
@@ -842,7 +874,7 @@ class MergnerPvCardEditor extends HTMLElement {
             <div class="metric-grid">
               <label>
                 <span>Primary entity</span>
-                <input data-field="entity" value="${this.safeText(node.entity ?? "")}" placeholder="sensor.battery_power" />
+                ${this.renderEntitySelect("entity", node.entity, "Choose primary entity")}
               </label>
               <label>
                 <span>Primary label</span>
@@ -854,7 +886,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
               <label>
                 <span>Secondary entity</span>
-                <input data-field="secondaryEntity" value="${this.safeText(node.secondaryEntity ?? "")}" placeholder="sensor.battery_soc" />
+                ${this.renderEntitySelect("secondaryEntity", node.secondaryEntity, "Choose secondary entity")}
               </label>
               <label>
                 <span>Secondary label</span>
@@ -866,7 +898,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
               <label>
                 <span>Tertiary entity</span>
-                <input data-field="tertiaryEntity" value="${this.safeText(node.tertiaryEntity ?? "")}" placeholder="sensor.battery_today" />
+                ${this.renderEntitySelect("tertiaryEntity", node.tertiaryEntity, "Choose tertiary entity")}
               </label>
               <label>
                 <span>Tertiary label</span>
@@ -894,7 +926,7 @@ class MergnerPvCardEditor extends HTMLElement {
           <div class="row" data-kind="link" data-index="${idx}">
             <select data-field="from">${options}</select>
             <select data-field="to">${options}</select>
-            <input data-field="entity" value="${this.safeText(link.entity ?? "")}" placeholder="sensor.flow_power" />
+            ${this.renderEntitySelect("entity", link.entity, "Choose flow entity")}
             <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
             <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
             <button data-action="remove-link" type="button">X</button>
@@ -1031,13 +1063,34 @@ class MergnerPvCardEditor extends HTMLElement {
         :host {
           display: block;
           padding: 8px 0;
-          color: var(--primary-text-color, #111);
+          color: var(--primary-text-color);
           font-family: var(--paper-font-body1_-_font-family, sans-serif);
         }
 
         .editor {
           display: grid;
           gap: 14px;
+        }
+
+        .panel {
+          display: grid;
+          gap: 12px;
+          padding: 14px;
+          border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
+          border-radius: 16px;
+          background: var(--card-background-color, rgba(127, 127, 127, 0.06));
+        }
+
+        .panel-title {
+          margin: 0;
+          font-size: 0.98rem;
+          font-weight: 700;
+        }
+
+        .panel-copy {
+          margin: -6px 0 0;
+          color: var(--secondary-text-color);
+          font-size: 0.84rem;
         }
 
         h4 {
@@ -1049,8 +1102,8 @@ class MergnerPvCardEditor extends HTMLElement {
           gap: 10px;
           padding: 12px;
           border-radius: 14px;
-          border: 1px solid rgba(128, 128, 128, 0.3);
-          background: rgba(127, 127, 127, 0.08);
+          border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
+          background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
         }
 
         .card-head {
@@ -1058,6 +1111,10 @@ class MergnerPvCardEditor extends HTMLElement {
           align-items: center;
           justify-content: space-between;
           gap: 8px;
+        }
+
+        .card-head strong {
+          font-size: 0.95rem;
         }
 
         .node-grid,
@@ -1076,7 +1133,7 @@ class MergnerPvCardEditor extends HTMLElement {
 
         .upload-field input[type='file'] {
           background: transparent;
-          padding: 0;
+          padding: 8px 0 0;
           border: 0;
         }
 
@@ -1088,8 +1145,8 @@ class MergnerPvCardEditor extends HTMLElement {
           border: 1px dashed rgba(128, 128, 128, 0.4);
           display: grid;
           place-items: center;
-          background: rgba(255, 255, 255, 0.05);
-          color: var(--secondary-text-color, #555);
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          color: var(--secondary-text-color);
           font-size: 0.74rem;
           text-align: center;
         }
@@ -1111,7 +1168,8 @@ class MergnerPvCardEditor extends HTMLElement {
         }
 
         label span {
-          color: var(--secondary-text-color, #555);
+          color: var(--secondary-text-color);
+          font-weight: 600;
         }
 
         .row {
@@ -1128,15 +1186,41 @@ class MergnerPvCardEditor extends HTMLElement {
         input,
         select,
         button {
-          padding: 6px;
+          padding: 10px 12px;
           border-radius: 8px;
-          border: 1px solid rgba(128, 128, 128, 0.45);
+          border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.45));
           font-size: 0.86rem;
-          background: rgba(255, 255, 255, 0.95);
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          color: var(--primary-text-color);
+          box-sizing: border-box;
+          width: 100%;
+        }
+
+        input:focus,
+        select:focus,
+        button:focus {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 1px;
         }
 
         button {
           cursor: pointer;
+          background: var(--primary-color);
+          color: var(--text-primary-color, #fff);
+          border-color: transparent;
+          font-weight: 600;
+        }
+
+        button:hover {
+          filter: brightness(1.05);
+        }
+
+        button[data-action='remove-node'],
+        button[data-action='remove-link'],
+        button[data-action='clear-image'] {
+          background: var(--secondary-background-color, rgba(127, 127, 127, 0.08));
+          color: var(--primary-text-color);
+          border-color: var(--divider-color, rgba(128, 128, 128, 0.45));
         }
 
         .topline {
@@ -1155,6 +1239,11 @@ class MergnerPvCardEditor extends HTMLElement {
           align-items: center;
           gap: 6px;
           font-size: 0.8rem;
+          padding: 0 4px;
+        }
+
+        .invert input {
+          width: auto;
         }
 
         @media (max-width: 720px) {
@@ -1172,18 +1261,30 @@ class MergnerPvCardEditor extends HTMLElement {
       </style>
 
       <div class="editor">
-        <div class="topline">
-          <label>Title</label>
-          <input id="title" value="${this.safeText(this.safeConfig.title ?? "PV Flow")}" placeholder="PV Flow" />
-        </div>
+        <section class="panel">
+          <h3 class="panel-title">General</h3>
+          <p class="panel-copy">Set the card title first. Then add devices and connect their flows below.</p>
+          <div class="topline">
+            <label>
+              <span>Title</span>
+              <input id="title" value="${this.safeText(this.safeConfig.title ?? "PV Flow")}" placeholder="PV Flow" />
+            </label>
+          </div>
+        </section>
 
-        <h4>Nodes</h4>
-        ${this.renderNodeRows(nodes)}
-        <div class="actions"><button data-action="add-node">Add node</button></div>
+        <section class="panel">
+          <h3 class="panel-title">Devices</h3>
+          <p class="panel-copy">Each device can show up to three values, for example power, SOC and daily energy.</p>
+          ${this.renderNodeRows(nodes)}
+          <div class="actions"><button data-action="add-node" type="button">Add device</button></div>
+        </section>
 
-        <h4>Links</h4>
-        ${this.renderLinkRows(links, nodes)}
-        <div class="actions"><button data-action="add-link">Add link</button></div>
+        <section class="panel">
+          <h3 class="panel-title">Flows</h3>
+          <p class="panel-copy">Connect devices and assign a power sensor to control arrow direction.</p>
+          ${this.renderLinkRows(links, nodes)}
+          <div class="actions"><button data-action="add-link" type="button">Add flow</button></div>
+        </section>
       </div>
     `;
 

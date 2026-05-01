@@ -11,6 +11,7 @@ Custom Home Assistant Lovelace card for PV energy flow visualization with dynami
 - Role based summary chips for generation, load, battery and grid
 - Circular device nodes with image inside the device bubble
 - Per-node image via URL or direct upload in the card editor
+- Cleaner editor layout with grouped sections and select fields for entities
 - Dynamic links between nodes with animated direction (forward/reverse)
 - Optional own image per node
 - Visual Home Assistant card editor (UI based, no YAML required for normal usage)
@@ -40,6 +41,7 @@ If resource is not added automatically, add this manual resource:
    - Title
   - Nodes (id, name, type, image, x, y)
   - Device image either via URL or direct upload
+  - Entity selection via dropdowns instead of only free text inputs
   - Primary value per device, for example current power
   - Secondary and tertiary values, for example SOC and daily energy
    - Links (from, to, optional flow entity, invert, label)
