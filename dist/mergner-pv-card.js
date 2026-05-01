@@ -186,7 +186,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         label: node.entityLabel,
         unit: node.unit,
         defaultLabel: this.defaultMetricLabel(role, "primary"),
-        showWhenEmpty: true
+        showWhenEmpty: false
       },
       {
         entity: node.secondaryEntity,
@@ -350,8 +350,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
             ${image ? "" : `<div class="node-media">${media}</div>`}
             <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
             <div class="node-label node-chip">${safeName}</div>
-            <div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>
-            <div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>
+            ${primaryMetric ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
+            ${primaryMetric ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
             ${batteryMeter}
           </div>
         </div>
