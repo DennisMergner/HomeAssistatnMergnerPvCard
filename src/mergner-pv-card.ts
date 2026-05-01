@@ -502,6 +502,51 @@ class MergnerPvCard extends HTMLElement {
     return "idle";
   }
 
+  private getLinkPowerWatts(link: FlowLink): number {
+    if (!link.entity) {
+      return 0;
+    }
+
+    const rawValue = this.parseNumber(link.entity);
+    const absValue = Math.abs(link.invert ? -rawValue : rawValue);
+    if (!Number.isFinite(absValue)) {
+      return 0;
+    }
+
+    const unit = this.getUnit(link.entity).trim().toLowerCase();
+    if (unit === "kw") {
+      return absValue * 1000;
+    }
+    if (unit === "mw") {
+      return absValue * 1_000_000;
+    }
+    return absValue;
+  }
+
+  private getFlowStrokeWidth(powerWatts: number, direction: "forward" | "reverse" | "idle"): number {
+    if (direction === "idle") {
+      return 0.56;
+    }
+    const normalized = Math.min(1, Math.sqrt(powerWatts / 7000));
+    return 0.56 + normalized * 0.98;
+  }
+
+  private getFlowDashLength(powerWatts: number, direction: "forward" | "reverse" | "idle"): number {
+    if (direction === "idle") {
+      return 2.8;
+    }
+    const normalized = Math.min(1, Math.log10(powerWatts + 1) / 4);
+    return 2.8 + normalized * 2.2;
+  }
+
+  private getFlowDurationSeconds(powerWatts: number, direction: "forward" | "reverse" | "idle"): number {
+    if (direction === "idle") {
+      return 2.6;
+    }
+    const normalized = Math.min(1, Math.log10(powerWatts + 1) / 4);
+    return 2.2 - normalized * 1.65;
+  }
+
   private renderLinks(nodes: RenderFlowNode[], links: FlowLink[]): string {
     const lookup = new Map(nodes.map((node) => [node.id, node]));
 
@@ -537,6 +582,12 @@ class MergnerPvCard extends HTMLElement {
         const valueY = midY + normalY * valueDistance;
 
         const direction = this.resolveLinkDirection(link);
+        const powerWatts = this.getLinkPowerWatts(link);
+        const strokeWidth = this.getFlowStrokeWidth(powerWatts, direction);
+        const dashLength = this.getFlowDashLength(powerWatts, direction);
+        const dashGap = Math.max(2.2, dashLength * 0.85);
+        const durationSeconds = this.getFlowDurationSeconds(powerWatts, direction);
+        const lineStyle = `--flow-stroke:${strokeWidth.toFixed(2)}; --flow-dash:${dashLength.toFixed(2)}; --flow-gap:${dashGap.toFixed(2)}; --flow-duration:${durationSeconds.toFixed(2)}s;`;
         const title = labelText ? `<title>${this.safeText(labelText)}</title>` : "";
         const labelMarkup = labelText
           ? `<text class="flow-annotation flow-annotation-label" x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle">${this.safeText(labelText)}</text>`
@@ -545,7 +596,7 @@ class MergnerPvCard extends HTMLElement {
           ? `<text class="flow-annotation flow-annotation-value" x="${valueX}" y="${valueY}" text-anchor="middle" dominant-baseline="middle">${this.safeText(valueText)}</text>`
           : "";
 
-        return `<g class="flow-edge"><line class="flow-line ${direction}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${labelMarkup}${valueMarkup}</g>`;
+        return `<g class="flow-edge"><line class="flow-line ${direction}" style="${lineStyle}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${labelMarkup}${valueMarkup}</g>`;
       })
       .join("");
 
@@ -656,10 +707,11 @@ class MergnerPvCard extends HTMLElement {
         }
 
         .flow-line {
-          stroke-width: 1.2;
+          stroke-width: var(--flow-stroke, 0.86);
           fill: none;
-          stroke-dasharray: 4 4;
-          animation: flow 1.1s linear infinite;
+          stroke-linecap: round;
+          stroke-dasharray: var(--flow-dash, 3.2) var(--flow-gap, 3.2);
+          animation: flow var(--flow-duration, 1.5s) linear infinite;
         }
 
         .flow-line.forward {
@@ -673,6 +725,7 @@ class MergnerPvCard extends HTMLElement {
 
         .flow-line.idle {
           stroke: var(--flow-idle);
+          opacity: 0.58;
           animation-play-state: paused;
         }
 
