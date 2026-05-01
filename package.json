@@ -1,0 +1,22 @@
+{
+  "name": "homeassistant-mergner-pv-card",
+  "version": "0.0.1",
+  "description": "Custom Home Assistant card for visualizing PV energy flows",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "build:watch": "node esbuild.mjs --watch",
+    "dev:serve": "node scripts/dev-server.mjs",
+    "release:patch": "node scripts/release.mjs patch",
+    "release:minor": "node scripts/release.mjs minor",
+    "release:major": "node scripts/release.mjs major",
+    "release:prerelease": "node scripts/release.mjs prerelease",
+    "release:patch:local": "node scripts/release.mjs patch --no-push",
+    "release:patch:test": "node scripts/release.mjs patch --no-push --allow-dirty --skip-branch-check",
+    "release:dry-run": "node scripts/release.mjs patch --no-push --allow-dirty --skip-branch-check --dry-run"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "typescript": "^5.8.0"
+  }
+}
