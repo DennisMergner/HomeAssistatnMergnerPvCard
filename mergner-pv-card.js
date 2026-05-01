@@ -1,30 +1,30 @@
-var u=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"Today",x:20,y:20},{id:"battery",name:"Battery",role:"battery",entityLabel:"Charge / Discharge",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Today",x:80,y:20},{id:"house",name:"House",role:"house",entityLabel:"Load",secondaryLabel:"Today",x:20,y:80},{id:"grid",name:"Grid",role:"grid",entityLabel:"Import / Export",secondaryLabel:"Today",x:80,y:80}],g=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],c=class f extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:u,links:g}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){return 5}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}getUnit(e){let a=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}parseNumber(e){let r=this.getState(e),a=Number.parseFloat(r);return Number.isFinite(a)?a:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Battery";case"house":return"House";case"grid":return"Grid";default:return"Node"}}defaultMetricLabel(e,r){if(r==="primary")switch(e){case"pv":return"Power";case"battery":return"Charge / Discharge";case"house":return"Load";case"grid":return"Import / Export";default:return"Value"}if(r==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":return"Today";default:return"Detail"}return e==="battery"?"Today":"Extra"}formatMetricValue(e,r){let a=e.trim(),t=r.trim();return t?`${a} ${t}`:a}getNodeMetrics(e){let r=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(r,"primary"),showWhenEmpty:!0},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(r,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(r,"tertiary"),showWhenEmpty:!1}].filter(t=>t.showWhenEmpty||!!t.entity?.trim()).map(t=>{let n=t.entity?this.getState(t.entity):"n/a",i=t.unit??(t.entity?this.getUnit(t.entity):"");return{label:t.label?.trim()||t.defaultLabel,value:n,numericValue:t.entity?this.parseNumber(t.entity):Number.NaN,unit:i}})}getBatteryLevel(e){let r=e.find(a=>a.unit==="%"||/soc|state of charge|akku|charge|level/i.test(a.label));if(!(!r||Number.isNaN(r.numericValue)))return this.clampMeterPercent(r.numericValue)}getSummaryUnit(e){for(let r of e){let a=r.unit?.trim()||this.getUnit(r.entity);if(a)return a}return""}renderSummary(e){let a=[{role:"pv",label:"Generation",className:"pv"},{role:"house",label:"Load",className:"house"},{role:"battery",label:"Battery",className:"battery"},{role:"grid",label:"Grid",className:"grid"}].map(t=>{let n=e.filter(l=>this.getNodeRole(l)===t.role&&l.entity?.trim());if(n.length===0)return"";let i=n.reduce((l,d)=>l+this.parseNumber(d.entity),0),s=this.getSummaryUnit(n),o=this.formatMetricValue(i.toFixed(Math.abs(i)>=100?0:1),s);return`
-          <div class="summary-chip ${t.className}">
-            <span>${this.safeText(t.label)}</span>
-            <strong>${this.safeText(o)}</strong>
+var g=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"Today",x:20,y:20},{id:"battery",name:"Battery",role:"battery",entityLabel:"Charge / Discharge",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Today",x:80,y:20},{id:"house",name:"House",role:"house",entityLabel:"Load",secondaryLabel:"Today",x:20,y:80},{id:"grid",name:"Grid",role:"grid",entityLabel:"Import / Export",secondaryLabel:"Today",x:80,y:80}],m=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],p=class b extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:g,links:m}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){return 5}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}getUnit(e){let t=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof t=="string"?t:""}parseNumber(e){let i=this.getState(e),t=Number.parseFloat(i);return Number.isFinite(t)?t:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Battery";case"house":return"House";case"grid":return"Grid";default:return"Node"}}defaultMetricLabel(e,i){if(i==="primary")switch(e){case"pv":return"Power";case"battery":return"Charge / Discharge";case"house":return"Load";case"grid":return"Import / Export";default:return"Value"}if(i==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":return"Today";default:return"Detail"}return e==="battery"?"Today":"Extra"}formatMetricValue(e,i){let t=e.trim(),a=i.trim();return a?`${t} ${a}`:t}getNodeMetrics(e){let i=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(i,"primary"),showWhenEmpty:!0},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(i,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(i,"tertiary"),showWhenEmpty:!1}].filter(a=>a.showWhenEmpty||!!a.entity?.trim()).map(a=>{let n=a.entity?this.getState(a.entity):"n/a",r=a.unit??(a.entity?this.getUnit(a.entity):"");return{label:a.label?.trim()||a.defaultLabel,value:n,numericValue:a.entity?this.parseNumber(a.entity):Number.NaN,unit:r}})}getBatteryLevel(e){let i=e.find(t=>t.unit==="%"||/soc|state of charge|akku|charge|level/i.test(t.label));if(!(!i||Number.isNaN(i.numericValue)))return this.clampMeterPercent(i.numericValue)}getSummaryUnit(e){for(let i of e){let t=i.unit?.trim()||this.getUnit(i.entity);if(t)return t}return""}renderSummary(e){let t=[{role:"pv",label:"Generation",className:"pv"},{role:"house",label:"Load",className:"house"},{role:"battery",label:"Battery",className:"battery"},{role:"grid",label:"Grid",className:"grid"}].map(a=>{let n=e.filter(l=>this.getNodeRole(l)===a.role&&l.entity?.trim());if(n.length===0)return"";let r=n.reduce((l,d)=>l+this.parseNumber(d.entity),0),o=this.getSummaryUnit(n),s=this.formatMetricValue(r.toFixed(Math.abs(r)>=100?0:1),o);return`
+          <div class="summary-chip ${a.className}">
+            <span>${this.safeText(a.label)}</span>
+            <strong>${this.safeText(s)}</strong>
           </div>
-        `}).join("");return a.trim()?`<div class="summary-row">${a}</div>`:""}normalizeConfig(e){let r=e.title??"PV Flow";if(e.nodes&&e.nodes.length>0){let t=e.nodes.map(i=>({...i,id:i.id?.trim()||`node_${Math.random().toString(36).slice(2,8)}`,name:i.name?.trim()||"Node",role:i.role??"custom",x:this.clampPercent(Number(i.x)),y:this.clampPercent(Number(i.y))})),n=(e.links??[]).filter(i=>t.some(s=>s.id===i.from)&&t.some(s=>s.id===i.to));return{title:r,nodes:t,links:n}}let a=u.map(t=>({...t,entity:e.entities?.[t.id],image:e.images?.[t.id]}));return{title:r,nodes:a,links:g}}renderNode(e){let r=this.getNodeRole(e),a=this.getNodeMetrics(e),t=a[0],n=a.slice(1),i=r==="battery"?this.getBatteryLevel(a):void 0,s=this.safeText(e.name),o=e.image?.trim(),l=o?`<img src="${this.safeText(o)}" alt="${s}" loading="lazy" />`:`<div class="fallback-icon">${s.slice(0,1)}</div>`,d=r==="battery"&&t&&!Number.isNaN(t.numericValue)?t.numericValue>0?"is-charging":t.numericValue<0?"is-discharging":"is-idle":"",h=n.map(p=>`
+        `}).join("");return t.trim()?`<div class="summary-row">${t}</div>`:""}normalizeConfig(e){let i=e.title??"PV Flow";if(e.nodes&&e.nodes.length>0){let a=e.nodes.map(r=>({...r,id:r.id?.trim()||`node_${Math.random().toString(36).slice(2,8)}`,name:r.name?.trim()||"Node",role:r.role??"custom",x:this.clampPercent(Number(r.x)),y:this.clampPercent(Number(r.y))})),n=(e.links??[]).filter(r=>a.some(o=>o.id===r.from)&&a.some(o=>o.id===r.to));return{title:i,nodes:a,links:n}}let t=g.map(a=>({...a,entity:e.entities?.[a.id],image:e.images?.[a.id]}));return{title:i,nodes:t,links:m}}renderNode(e){let i=this.getNodeRole(e),t=this.getNodeMetrics(e),a=t[0],n=t.slice(1),r=i==="battery"?this.getBatteryLevel(t):void 0,o=this.safeText(e.name),s=e.image?.trim(),l=s?`<img src="${this.safeText(s)}" alt="${o}" loading="lazy" />`:`<div class="fallback-icon">${o.slice(0,1)}</div>`,d=i==="battery"&&a&&!Number.isNaN(a.numericValue)?a.numericValue>0?"is-charging":a.numericValue<0?"is-discharging":"is-idle":"",u=n.map(c=>`
           <div class="node-stat">
-            <span>${this.safeText(p.label)}</span>
-            <strong>${this.safeText(this.formatMetricValue(p.value,p.unit))}</strong>
+            <span>${this.safeText(c.label)}</span>
+            <strong>${this.safeText(this.formatMetricValue(c.value,c.unit))}</strong>
           </div>
-        `).join(""),b=i===void 0?"":`
-          <div class="battery-meter" aria-label="Battery level ${i}%">
-            <div class="battery-meter-fill" style="width:${i}%;"></div>
+        `).join(""),h=r===void 0?"":`
+          <div class="battery-meter" aria-label="Battery level ${r}%">
+            <div class="battery-meter-fill" style="width:${r}%;"></div>
           </div>
         `;return`
-      <article class="node node-${r} ${d}" style="left:${this.clampPercent(e.x)}%; top:${this.clampPercent(e.y)}%;">
+      <article class="node node-${i} ${d}" style="left:${this.clampPercent(e.x)}%; top:${this.clampPercent(e.y)}%;">
         <div class="node-orb">
           <div class="node-media">${l}</div>
-          <div class="node-kicker">${this.safeText(this.roleLabel(r))}</div>
-          <div class="node-label">${s}</div>
-          <div class="node-value">${this.safeText(this.formatMetricValue(t.value,t.unit))}</div>
-          <div class="node-value-label">${this.safeText(t.label)}</div>
-          ${b}
+          <div class="node-kicker">${this.safeText(this.roleLabel(i))}</div>
+          <div class="node-label">${o}</div>
+          <div class="node-value">${this.safeText(this.formatMetricValue(a.value,a.unit))}</div>
+          <div class="node-value-label">${this.safeText(a.label)}</div>
+          ${h}
         </div>
-        ${h?`<div class="node-stats">${h}</div>`:""}
+        ${u?`<div class="node-stats">${u}</div>`:""}
       </article>
-    `}resolveLinkDirection(e){if(!e.entity)return"idle";let r=this.parseNumber(e.entity);return e.invert&&(r=-r),r>0?"forward":r<0?"reverse":"idle"}renderLinks(e,r){let a=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${r.map((n,i)=>{let s=a.get(n.from),o=a.get(n.to);if(!s||!o)return"";let l=this.resolveLinkDirection(n),d=n.label?.trim()?`<title>${this.safeText(n.label)}</title>`:"";return`<line class="flow-line ${l}" x1="${s.x}" y1="${s.y}" x2="${o.x}" y2="${o.y}">${d}</line>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let r=this.normalizeConfig(this._config??f.getStubConfig());e.innerHTML=`
+    `}resolveLinkDirection(e){if(!e.entity)return"idle";let i=this.parseNumber(e.entity);return e.invert&&(i=-i),i>0?"forward":i<0?"reverse":"idle"}renderLinks(e,i){let t=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${i.map((n,r)=>{let o=t.get(n.from),s=t.get(n.to);if(!o||!s)return"";let l=this.resolveLinkDirection(n),d=n.label?.trim()?`<title>${this.safeText(n.label)}</title>`:"";return`<line class="flow-line ${l}" x1="${o.x}" y1="${o.y}" x2="${s.x}" y2="${s.y}">${d}</line>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.normalizeConfig(this._config??b.getStubConfig());e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -280,51 +280,72 @@ var u=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
       </style>
 
       <ha-card>
-        <div class="title">${this.safeText(r.title)}</div>
-        ${this.renderSummary(r.nodes)}
+        <div class="title">${this.safeText(i.title)}</div>
+        ${this.renderSummary(i.nodes)}
         <div class="flow-wrap">
-          ${this.renderLinks(r.nodes,r.links)}
-          ${r.nodes.map(a=>this.renderNode(a)).join("")}
+          ${this.renderLinks(i.nodes,i.links)}
+          ${i.nodes.map(t=>this.renderNode(t)).join("")}
         </div>
       </ha-card>
-    `}},m=class extends HTMLElement{_config;_hass;safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}setConfig(e){this._config={...c.getStubConfig(),...e},this.render()}set hass(e){this._hass=e,this.render()}connectedCallback(){this.render()}get safeConfig(){return this._config??c.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,r,a,t){let n=[...e];n[a]={...n[a],...t},this.emitConfig({...this.safeConfig,nodes:n,links:r})}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,r)=>e.localeCompare(r))}renderEntitySelect(e,r,a="Select entity"){let t=this.getEntityIds(),n=r?.trim()??"",i=n&&!t.includes(n)?`<option value="${this.safeText(n)}" selected>${this.safeText(n)}</option>`:"",s=t.map(o=>{let l=o===n?"selected":"";return`<option value="${this.safeText(o)}" ${l}>${this.safeText(o)}</option>`}).join("");return`
+    `}},y=class extends HTMLElement{_config;_hass;_dragNodeIndex;_dragEventsBound=!1;safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}setConfig(e){this._config={...p.getStubConfig(),...e},this.render()}set hass(e){this._hass=e,this.render()}connectedCallback(){this.bindDragEvents(),this.render()}get safeConfig(){return this._config??p.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,i,t,a){let n=[...e];n[t]={...n[t],...a},this.emitConfig({...this.safeConfig,nodes:n,links:i})}bindDragEvents(){this._dragEventsBound||(window.addEventListener("pointermove",this.handlePointerMove),window.addEventListener("pointerup",this.handlePointerUp),window.addEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!0)}disconnectedCallback(){this._dragEventsBound&&(window.removeEventListener("pointermove",this.handlePointerMove),window.removeEventListener("pointerup",this.handlePointerUp),window.removeEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!1)}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,i)=>e.localeCompare(i))}getEntityUnit(e){let t=this._hass?.states?.[e]?.attributes?.unit_of_measurement;return typeof t=="string"?t:""}getEntityDeviceClass(e){let t=this._hass?.states?.[e]?.attributes?.device_class;return typeof t=="string"?t:""}matchesEntityFilter(e,i){if(i==="any")return!0;let t=this.getEntityUnit(e).toLowerCase(),a=this.getEntityDeviceClass(e).toLowerCase();return i==="power"?/^(w|kw|mw|gw|va|kva)$/.test(t)||["power","apparent_power","reactive_power"].includes(a):i==="energy"?/^(wh|kwh|mwh|gwh)$/.test(t)||a==="energy":t==="%"||a==="battery"}getNodeEntityFilter(e,i){return i==="entity"?"power":i==="secondaryEntity"?e.role==="battery"?"percent":"energy":i==="tertiaryEntity"?"energy":"any"}renderEntitySelect(e,i,t="Select entity",a="any"){let n=this.getEntityIds(),r=i?.trim()??"",o=r&&!n.includes(r)?`<option value="${this.safeText(r)}" selected>${this.safeText(r)}</option>`:"",s=n.filter(c=>this.matchesEntityFilter(c,a)),l=n.filter(c=>!s.includes(c)),d=c=>c.map(f=>{let v=f===r?"selected":"";return`<option value="${this.safeText(f)}" ${v}>${this.safeText(f)}</option>`}).join(""),u=s.length>0?`<optgroup label="Recommended">${d(s)}</optgroup>`:"",h=l.length>0?`<optgroup label="All entities">${d(l)}</optgroup>`:"";return`
       <select data-field="${String(e)}">
-        <option value="">${this.safeText(a)}</option>
-        ${i}
-        ${s}
+        <option value="">${this.safeText(t)}</option>
+        ${o}
+        ${u}
+        ${h}
       </select>
-    `}readFileAsDataUrl(e){return new Promise((r,a)=>{let t=new FileReader;t.addEventListener("load",()=>{if(typeof t.result=="string"){r(t.result);return}a(new Error("Image upload failed"))}),t.addEventListener("error",()=>a(t.error??new Error("Image upload failed"))),t.readAsDataURL(e)})}renderNodeRows(e){let r=["pv","battery","house","grid","custom"];return e.map((a,t)=>`
-          <section class="node-card" data-kind="node" data-index="${t}">
+    `}renderLayoutCanvas(e,i){let t=new Map(e.map(r=>[r.id,r])),a=i.map(r=>{let o=t.get(r.from),s=t.get(r.to);return!o||!s?"":`<line x1="${o.x}" y1="${o.y}" x2="${s.x}" y2="${s.y}"></line>`}).join(""),n=e.map((r,o)=>{let s=r.image?.trim(),l=s?`<img src="${this.safeText(s)}" alt="${this.safeText(r.name)}" />`:`<span>${this.safeText(r.name.slice(0,1).toUpperCase())}</span>`;return`
+          <button
+            class="layout-node"
+            data-action="drag-node"
+            data-index="${o}"
+            type="button"
+            style="left:${r.x}%; top:${r.y}%;"
+            aria-label="Drag ${this.safeText(r.name)}"
+          >
+            <div class="layout-node-media">${l}</div>
+            <div class="layout-node-label">${this.safeText(r.name)}</div>
+          </button>
+        `}).join("");return`
+      <div class="layout-canvas-wrap">
+        <div class="layout-hint">Drag devices in the preview to set X/Y positions.</div>
+        <div class="layout-canvas">
+          <svg class="layout-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${a}</svg>
+          ${n}
+        </div>
+      </div>
+    `}startNodeDrag(e){this._dragNodeIndex=e}handlePointerMove=e=>{if(this._dragNodeIndex===void 0)return;let t=this.shadowRoot?.querySelector(".layout-canvas");if(!t)return;let a=t.getBoundingClientRect();if(a.width===0||a.height===0)return;let n=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:g,r=this.safeConfig.links??m,o=Math.max(4,Math.min(96,(e.clientX-a.left)/a.width*100)),s=Math.max(4,Math.min(96,(e.clientY-a.top)/a.height*100));this.updateNode(n,r,this._dragNodeIndex,{x:Number(o.toFixed(1)),y:Number(s.toFixed(1))})};handlePointerUp=()=>{this._dragNodeIndex=void 0};readFileAsDataUrl(e){return new Promise((i,t)=>{let a=new FileReader;a.addEventListener("load",()=>{if(typeof a.result=="string"){i(a.result);return}t(new Error("Image upload failed"))}),a.addEventListener("error",()=>t(a.error??new Error("Image upload failed"))),a.readAsDataURL(e)})}renderNodeRows(e){let i=["pv","battery","house","grid","custom"];return e.map((t,a)=>`
+          <section class="node-card" data-kind="node" data-index="${a}">
             <div class="card-head">
-              <strong>Node ${t+1}</strong>
+              <strong>Node ${a+1}</strong>
               <button data-action="remove-node" type="button">Remove</button>
             </div>
             <div class="node-grid">
               <label>
                 <span>ID</span>
-                <input data-field="id" value="${this.safeText(a.id)}" placeholder="battery_1" />
+                <input data-field="id" value="${this.safeText(t.id)}" placeholder="battery_1" />
               </label>
               <label>
                 <span>Name</span>
-                <input data-field="name" value="${this.safeText(a.name)}" placeholder="Battery 1" />
+                <input data-field="name" value="${this.safeText(t.name)}" placeholder="Battery 1" />
               </label>
               <label>
                 <span>Type</span>
                 <select data-field="role">
-                  ${r.map(n=>`<option value="${n}" ${(a.role??"custom")===n?"selected":""}>${n}</option>`).join("")}
+                  ${i.map(n=>`<option value="${n}" ${(t.role??"custom")===n?"selected":""}>${n}</option>`).join("")}
                 </select>
               </label>
               <label>
                 <span>Image URL</span>
-                <input data-field="image" value="${this.safeText(a.image??"")}" placeholder="/local/pv/battery.png" />
+                <input data-field="image" value="${this.safeText(t.image??"")}" placeholder="/local/pv/battery.png" />
               </label>
               <label>
                 <span>X</span>
-                <input data-field="x" type="number" min="0" max="100" value="${a.x}" />
+                <input data-field="x" type="number" min="0" max="100" value="${t.x}" />
               </label>
               <label>
                 <span>Y</span>
-                <input data-field="y" type="number" min="0" max="100" value="${a.y}" />
+                <input data-field="y" type="number" min="0" max="100" value="${t.y}" />
               </label>
             </div>
             <div class="image-tools">
@@ -333,59 +354,59 @@ var u=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
                 <input data-action="upload-image" type="file" accept="image/*" />
               </label>
               <button data-action="clear-image" type="button">Clear image</button>
-              <div class="image-preview ${a.image?.trim()?"has-image":""}">
-                ${a.image?.trim()?`<img src="${this.safeText(a.image)}" alt="${this.safeText(a.name)} preview" />`:"<span>No image</span>"}
+              <div class="image-preview ${t.image?.trim()?"has-image":""}">
+                ${t.image?.trim()?`<img src="${this.safeText(t.image)}" alt="${this.safeText(t.name)} preview" />`:"<span>No image</span>"}
               </div>
             </div>
             <div class="metric-grid">
               <label>
                 <span>Primary entity</span>
-                ${this.renderEntitySelect("entity",a.entity,"Choose primary entity")}
+                ${this.renderEntitySelect("entity",t.entity,"Choose primary entity",this.getNodeEntityFilter(t,"entity"))}
               </label>
               <label>
                 <span>Primary label</span>
-                <input data-field="entityLabel" value="${this.safeText(a.entityLabel??"")}" placeholder="Charge / Discharge" />
+                <input data-field="entityLabel" value="${this.safeText(t.entityLabel??"")}" placeholder="Charge / Discharge" />
               </label>
               <label>
                 <span>Primary unit</span>
-                <input data-field="unit" value="${this.safeText(a.unit??"")}" placeholder="auto / W" />
+                <input data-field="unit" value="${this.safeText(t.unit??"")}" placeholder="auto / W" />
               </label>
               <label>
                 <span>Secondary entity</span>
-                ${this.renderEntitySelect("secondaryEntity",a.secondaryEntity,"Choose secondary entity")}
+                ${this.renderEntitySelect("secondaryEntity",t.secondaryEntity,"Choose secondary entity",this.getNodeEntityFilter(t,"secondaryEntity"))}
               </label>
               <label>
                 <span>Secondary label</span>
-                <input data-field="secondaryLabel" value="${this.safeText(a.secondaryLabel??"")}" placeholder="SOC" />
+                <input data-field="secondaryLabel" value="${this.safeText(t.secondaryLabel??"")}" placeholder="SOC" />
               </label>
               <label>
                 <span>Secondary unit</span>
-                <input data-field="secondaryUnit" value="${this.safeText(a.secondaryUnit??"")}" placeholder="auto / %" />
+                <input data-field="secondaryUnit" value="${this.safeText(t.secondaryUnit??"")}" placeholder="auto / %" />
               </label>
               <label>
                 <span>Tertiary entity</span>
-                ${this.renderEntitySelect("tertiaryEntity",a.tertiaryEntity,"Choose tertiary entity")}
+                ${this.renderEntitySelect("tertiaryEntity",t.tertiaryEntity,"Choose tertiary entity",this.getNodeEntityFilter(t,"tertiaryEntity"))}
               </label>
               <label>
                 <span>Tertiary label</span>
-                <input data-field="tertiaryLabel" value="${this.safeText(a.tertiaryLabel??"")}" placeholder="Today" />
+                <input data-field="tertiaryLabel" value="${this.safeText(t.tertiaryLabel??"")}" placeholder="Today" />
               </label>
               <label>
                 <span>Tertiary unit</span>
-                <input data-field="tertiaryUnit" value="${this.safeText(a.tertiaryUnit??"")}" placeholder="auto / kWh" />
+                <input data-field="tertiaryUnit" value="${this.safeText(t.tertiaryUnit??"")}" placeholder="auto / kWh" />
               </label>
             </div>
           </section>
-        `).join("")}renderLinkRows(e,r){let a=r.map(t=>`<option value="${this.safeText(t.id)}">${this.safeText(t.name)} (${this.safeText(t.id)})</option>`).join("");return e.map((t,n)=>`
+        `).join("")}renderLinkRows(e,i){let t=i.map(a=>`<option value="${this.safeText(a.id)}">${this.safeText(a.name)} (${this.safeText(a.id)})</option>`).join("");return e.map((a,n)=>`
           <div class="row" data-kind="link" data-index="${n}">
-            <select data-field="from">${a}</select>
-            <select data-field="to">${a}</select>
-            ${this.renderEntitySelect("entity",t.entity,"Choose flow entity")}
-            <input data-field="label" value="${this.safeText(t.label??"")}" placeholder="Label optional" />
-            <label class="invert"><input data-field="invert" type="checkbox" ${t.invert?"checked":""} />invert</label>
+            <select data-field="from">${t}</select>
+            <select data-field="to">${t}</select>
+            ${this.renderEntitySelect("entity",a.entity,"Choose flow entity","power")}
+            <input data-field="label" value="${this.safeText(a.label??"")}" placeholder="Label optional" />
+            <label class="invert"><input data-field="invert" type="checkbox" ${a.invert?"checked":""} />invert</label>
             <button data-action="remove-link" type="button">X</button>
           </div>
-        `).join("")}wireEvents(e,r){let a=this.shadowRoot;a&&(a.querySelectorAll(".node-card[data-kind='node']").forEach((t,n)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(i=>{i.addEventListener("change",()=>{let s=i.dataset.field,o=i instanceof HTMLInputElement&&i.type==="number"?Number(i.value):i.value;this.updateNode(e,r,n,{[s]:o})})}),t.querySelector("input[data-action='upload-image']")?.addEventListener("change",async i=>{let s=i.currentTarget,o=s.files?.[0];if(o)try{let l=await this.readFileAsDataUrl(o);this.updateNode(e,r,n,{image:l})}catch(l){console.error(l)}finally{s.value=""}}),t.querySelector("button[data-action='clear-image']")?.addEventListener("click",()=>{this.updateNode(e,r,n,{image:""})}),t.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let i=e.filter((l,d)=>d!==n),s=new Set(i.map(l=>l.id)),o=r.filter(l=>s.has(l.from)&&s.has(l.to));this.emitConfig({...this.safeConfig,nodes:i,links:o})})}),a.querySelectorAll(".row[data-kind='link']").forEach((t,n)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(i=>{if(i instanceof HTMLInputElement&&i.type==="checkbox"){i.addEventListener("change",()=>{let s=[...r];s[n]={...s[n],invert:i.checked},this.emitConfig({...this.safeConfig,nodes:e,links:s})});return}i.addEventListener("change",()=>{let s=i.dataset.field,o=[...r];o[n]={...o[n],[s]:i.value},this.emitConfig({...this.safeConfig,nodes:e,links:o})})}),t.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let i=r.filter((s,o)=>o!==n);this.emitConfig({...this.safeConfig,nodes:e,links:i})})}),a.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let t=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:t,links:r})}),a.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let t=[...r,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:t})}),a.querySelectorAll(".row[data-kind='link']").forEach((t,n)=>{let i=t.querySelectorAll("select[data-field]"),s=r[n];i[0]&&(i[0].value=s.from),i[1]&&(i[1].value=s.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let r=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:u,a=this.safeConfig.links??g;e.innerHTML=`
+        `).join("")}wireEvents(e,i){let t=this.shadowRoot;t&&(t.querySelectorAll(".node-card[data-kind='node']").forEach((a,n)=>{a.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{r.addEventListener("change",()=>{let o=r.dataset.field,s=r instanceof HTMLInputElement&&r.type==="number"?Number(r.value):r.value;this.updateNode(e,i,n,{[o]:s})})}),a.querySelector("input[data-action='upload-image']")?.addEventListener("change",async r=>{let o=r.currentTarget,s=o.files?.[0];if(s)try{let l=await this.readFileAsDataUrl(s);this.updateNode(e,i,n,{image:l})}catch(l){console.error(l)}finally{o.value=""}}),a.querySelector("button[data-action='clear-image']")?.addEventListener("click",()=>{this.updateNode(e,i,n,{image:""})}),a.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let r=e.filter((l,d)=>d!==n),o=new Set(r.map(l=>l.id)),s=i.filter(l=>o.has(l.from)&&o.has(l.to));this.emitConfig({...this.safeConfig,nodes:r,links:s})})}),t.querySelectorAll("button[data-action='drag-node']").forEach(a=>{a.addEventListener("pointerdown",n=>{if(n.button!==0)return;let r=Number(a.dataset.index);Number.isFinite(r)&&(n.preventDefault(),this.startNodeDrag(r))})}),t.querySelectorAll(".row[data-kind='link']").forEach((a,n)=>{a.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{if(r instanceof HTMLInputElement&&r.type==="checkbox"){r.addEventListener("change",()=>{let o=[...i];o[n]={...o[n],invert:r.checked},this.emitConfig({...this.safeConfig,nodes:e,links:o})});return}r.addEventListener("change",()=>{let o=r.dataset.field,s=[...i];s[n]={...s[n],[o]:r.value},this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),a.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let r=i.filter((o,s)=>s!==n);this.emitConfig({...this.safeConfig,nodes:e,links:r})})}),t.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let a=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:a,links:i})}),t.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let a=[...i,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:a})}),t.querySelectorAll(".row[data-kind='link']").forEach((a,n)=>{let r=a.querySelectorAll("select[data-field]"),o=i[n];r[0]&&(r[0].value=o.from),r[1]&&(r[1].value=o.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:g,t=this.safeConfig.links??m;e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -418,6 +439,91 @@ var u=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
           margin: -6px 0 0;
           color: var(--secondary-text-color);
           font-size: 0.84rem;
+        }
+
+        .layout-canvas-wrap {
+          display: grid;
+          gap: 10px;
+        }
+
+        .layout-hint {
+          color: var(--secondary-text-color);
+          font-size: 0.82rem;
+        }
+
+        .layout-canvas {
+          position: relative;
+          min-height: 280px;
+          border-radius: 18px;
+          overflow: hidden;
+          background:
+            linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            radial-gradient(circle at 20% 20%, rgba(116, 224, 203, 0.18), transparent 40%),
+            #0f2f3a;
+          background-size: 28px 28px, 28px 28px, auto, auto;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          touch-action: none;
+        }
+
+        .layout-lines {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .layout-lines line {
+          stroke: rgba(255, 255, 255, 0.42);
+          stroke-width: 1.2;
+          stroke-dasharray: 4 4;
+        }
+
+        .layout-node {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          width: 90px;
+          min-height: 90px;
+          border-radius: 50%;
+          padding: 10px;
+          display: grid;
+          gap: 6px;
+          place-items: center;
+          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
+          cursor: grab;
+          user-select: none;
+        }
+
+        .layout-node:active {
+          cursor: grabbing;
+        }
+
+        .layout-node-media {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.14);
+          color: #fff;
+          font-weight: 700;
+        }
+
+        .layout-node-media img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .layout-node-label {
+          max-width: 64px;
+          font-size: 0.72rem;
+          line-height: 1.2;
+          text-align: center;
+          color: #f5fbfb;
         }
 
         h4 {
@@ -580,6 +686,11 @@ var u=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
             grid-template-columns: 1fr;
           }
 
+          .layout-node {
+            width: 82px;
+            min-height: 82px;
+          }
+
           .card-head {
             align-items: flex-start;
             flex-direction: column;
@@ -600,17 +711,23 @@ var u=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
         </section>
 
         <section class="panel">
+          <h3 class="panel-title">Layout</h3>
+          <p class="panel-copy">Place devices visually. The X and Y fields update while you drag.</p>
+          ${this.renderLayoutCanvas(i,t)}
+        </section>
+
+        <section class="panel">
           <h3 class="panel-title">Devices</h3>
           <p class="panel-copy">Each device can show up to three values, for example power, SOC and daily energy.</p>
-          ${this.renderNodeRows(r)}
+          ${this.renderNodeRows(i)}
           <div class="actions"><button data-action="add-node" type="button">Add device</button></div>
         </section>
 
         <section class="panel">
           <h3 class="panel-title">Flows</h3>
           <p class="panel-copy">Connect devices and assign a power sensor to control arrow direction.</p>
-          ${this.renderLinkRows(a,r)}
+          ${this.renderLinkRows(t,i)}
           <div class="actions"><button data-action="add-link" type="button">Add flow</button></div>
         </section>
       </div>
-    `;let t=e.querySelector("#title");t?.addEventListener("change",()=>{this.emitConfig({...this.safeConfig,title:t.value,nodes:r,links:a})}),this.wireEvents(r,a)}};customElements.define("mergner-pv-card",c);customElements.define("mergner-pv-card-editor",m);window.customCards=window.customCards||[];window.customCards.push({type:"mergner-pv-card",name:"Mergner PV Card",description:"Dynamic PV flow card with visual editor",preview:!0});
+    `;let a=e.querySelector("#title");a?.addEventListener("change",()=>{this.emitConfig({...this.safeConfig,title:a.value,nodes:i,links:t})}),this.wireEvents(i,t)}};customElements.define("mergner-pv-card",p);customElements.define("mergner-pv-card-editor",y);window.customCards=window.customCards||[];window.customCards.push({type:"mergner-pv-card",name:"Mergner PV Card",description:"Dynamic PV flow card with visual editor",preview:!0});

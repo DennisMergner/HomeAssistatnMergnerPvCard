@@ -64,6 +64,8 @@ type NodeMetric = {
   unit: string;
 };
 
+type EntityFilterKind = "power" | "energy" | "percent" | "any";
+
 const DEFAULT_NODES: FlowNode[] = [
   { id: "solar", name: "Solar", role: "pv", entityLabel: "Power", secondaryLabel: "Today", x: 20, y: 20 },
   {
@@ -728,6 +730,8 @@ class MergnerPvCard extends HTMLElement {
 class MergnerPvCardEditor extends HTMLElement {
   private _config?: CardConfig;
   private _hass?: HomeAssistant;
+  private _dragNodeIndex?: number;
+  private _dragEventsBound = false;
 
   private safeText(input: string): string {
     return input
@@ -751,6 +755,7 @@ class MergnerPvCardEditor extends HTMLElement {
   }
 
   connectedCallback(): void {
+    this.bindDragEvents();
     this.render();
   }
 
@@ -776,31 +781,189 @@ class MergnerPvCardEditor extends HTMLElement {
     this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
   }
 
+  private bindDragEvents(): void {
+    if (this._dragEventsBound) {
+      return;
+    }
+
+    window.addEventListener("pointermove", this.handlePointerMove);
+    window.addEventListener("pointerup", this.handlePointerUp);
+    window.addEventListener("pointercancel", this.handlePointerUp);
+    this._dragEventsBound = true;
+  }
+
+  disconnectedCallback(): void {
+    if (!this._dragEventsBound) {
+      return;
+    }
+
+    window.removeEventListener("pointermove", this.handlePointerMove);
+    window.removeEventListener("pointerup", this.handlePointerUp);
+    window.removeEventListener("pointercancel", this.handlePointerUp);
+    this._dragEventsBound = false;
+  }
+
   private getEntityIds(): string[] {
     return Object.keys(this._hass?.states ?? {}).sort((left, right) => left.localeCompare(right));
   }
 
-  private renderEntitySelect(field: keyof FlowNode | keyof FlowLink, value?: string, placeholder = "Select entity"): string {
+  private getEntityUnit(entityId: string): string {
+    const attributes = this._hass?.states?.[entityId]?.attributes;
+    const unit = attributes?.unit_of_measurement;
+    return typeof unit === "string" ? unit : "";
+  }
+
+  private getEntityDeviceClass(entityId: string): string {
+    const attributes = this._hass?.states?.[entityId]?.attributes;
+    const deviceClass = attributes?.device_class;
+    return typeof deviceClass === "string" ? deviceClass : "";
+  }
+
+  private matchesEntityFilter(entityId: string, filter: EntityFilterKind): boolean {
+    if (filter === "any") {
+      return true;
+    }
+
+    const unit = this.getEntityUnit(entityId).toLowerCase();
+    const deviceClass = this.getEntityDeviceClass(entityId).toLowerCase();
+
+    if (filter === "power") {
+      return /^(w|kw|mw|gw|va|kva)$/.test(unit) || ["power", "apparent_power", "reactive_power"].includes(deviceClass);
+    }
+
+    if (filter === "energy") {
+      return /^(wh|kwh|mwh|gwh)$/.test(unit) || deviceClass === "energy";
+    }
+
+    return unit === "%" || deviceClass === "battery";
+  }
+
+  private getNodeEntityFilter(node: FlowNode, field: keyof FlowNode): EntityFilterKind {
+    if (field === "entity") {
+      return "power";
+    }
+
+    if (field === "secondaryEntity") {
+      return node.role === "battery" ? "percent" : "energy";
+    }
+
+    if (field === "tertiaryEntity") {
+      return "energy";
+    }
+
+    return "any";
+  }
+
+  private renderEntitySelect(
+    field: keyof FlowNode | keyof FlowLink,
+    value?: string,
+    placeholder = "Select entity",
+    filter: EntityFilterKind = "any"
+  ): string {
     const entityIds = this.getEntityIds();
     const selectedValue = value?.trim() ?? "";
     const customOption = selectedValue && !entityIds.includes(selectedValue)
       ? `<option value="${this.safeText(selectedValue)}" selected>${this.safeText(selectedValue)}</option>`
       : "";
-    const options = entityIds
+    const preferredEntityIds = entityIds.filter((entityId) => this.matchesEntityFilter(entityId, filter));
+    const remainingEntityIds = entityIds.filter((entityId) => !preferredEntityIds.includes(entityId));
+    const renderOptions = (options: string[]) =>
+      options
       .map((entityId) => {
         const selected = entityId === selectedValue ? "selected" : "";
         return `<option value="${this.safeText(entityId)}" ${selected}>${this.safeText(entityId)}</option>`;
       })
       .join("");
+    const preferredGroup = preferredEntityIds.length > 0 ? `<optgroup label="Recommended">${renderOptions(preferredEntityIds)}</optgroup>` : "";
+    const allGroup = remainingEntityIds.length > 0 ? `<optgroup label="All entities">${renderOptions(remainingEntityIds)}</optgroup>` : "";
 
     return `
       <select data-field="${String(field)}">
         <option value="">${this.safeText(placeholder)}</option>
         ${customOption}
-        ${options}
+        ${preferredGroup}
+        ${allGroup}
       </select>
     `;
   }
+
+  private renderLayoutCanvas(nodes: FlowNode[], links: FlowLink[]): string {
+    const lookup = new Map(nodes.map((node) => [node.id, node]));
+    const lines = links
+      .map((link) => {
+        const from = lookup.get(link.from);
+        const to = lookup.get(link.to);
+        if (!from || !to) {
+          return "";
+        }
+        return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`;
+      })
+      .join("");
+
+    const nodeMarkup = nodes
+      .map((node, index) => {
+        const image = node.image?.trim();
+        const media = image
+          ? `<img src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />`
+          : `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
+
+        return `
+          <button
+            class="layout-node"
+            data-action="drag-node"
+            data-index="${index}"
+            type="button"
+            style="left:${node.x}%; top:${node.y}%;"
+            aria-label="Drag ${this.safeText(node.name)}"
+          >
+            <div class="layout-node-media">${media}</div>
+            <div class="layout-node-label">${this.safeText(node.name)}</div>
+          </button>
+        `;
+      })
+      .join("");
+
+    return `
+      <div class="layout-canvas-wrap">
+        <div class="layout-hint">Drag devices in the preview to set X/Y positions.</div>
+        <div class="layout-canvas">
+          <svg class="layout-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>
+          ${nodeMarkup}
+        </div>
+      </div>
+    `;
+  }
+
+  private startNodeDrag(index: number): void {
+    this._dragNodeIndex = index;
+  }
+
+  private handlePointerMove = (event: PointerEvent): void => {
+    if (this._dragNodeIndex === undefined) {
+      return;
+    }
+
+    const root = this.shadowRoot;
+    const canvas = root?.querySelector<HTMLElement>(".layout-canvas");
+    if (!canvas) {
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      return;
+    }
+
+    const nodes = this.safeConfig.nodes && this.safeConfig.nodes.length > 0 ? this.safeConfig.nodes : DEFAULT_NODES;
+    const links = this.safeConfig.links ?? DEFAULT_LINKS;
+    const x = Math.max(4, Math.min(96, ((event.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(4, Math.min(96, ((event.clientY - rect.top) / rect.height) * 100));
+    this.updateNode(nodes, links, this._dragNodeIndex, { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) });
+  };
+
+  private handlePointerUp = (): void => {
+    this._dragNodeIndex = undefined;
+  };
 
   private readFileAsDataUrl(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -874,7 +1037,7 @@ class MergnerPvCardEditor extends HTMLElement {
             <div class="metric-grid">
               <label>
                 <span>Primary entity</span>
-                ${this.renderEntitySelect("entity", node.entity, "Choose primary entity")}
+                ${this.renderEntitySelect("entity", node.entity, "Choose primary entity", this.getNodeEntityFilter(node, "entity"))}
               </label>
               <label>
                 <span>Primary label</span>
@@ -886,7 +1049,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
               <label>
                 <span>Secondary entity</span>
-                ${this.renderEntitySelect("secondaryEntity", node.secondaryEntity, "Choose secondary entity")}
+                ${this.renderEntitySelect("secondaryEntity", node.secondaryEntity, "Choose secondary entity", this.getNodeEntityFilter(node, "secondaryEntity"))}
               </label>
               <label>
                 <span>Secondary label</span>
@@ -898,7 +1061,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
               <label>
                 <span>Tertiary entity</span>
-                ${this.renderEntitySelect("tertiaryEntity", node.tertiaryEntity, "Choose tertiary entity")}
+                ${this.renderEntitySelect("tertiaryEntity", node.tertiaryEntity, "Choose tertiary entity", this.getNodeEntityFilter(node, "tertiaryEntity"))}
               </label>
               <label>
                 <span>Tertiary label</span>
@@ -926,7 +1089,7 @@ class MergnerPvCardEditor extends HTMLElement {
           <div class="row" data-kind="link" data-index="${idx}">
             <select data-field="from">${options}</select>
             <select data-field="to">${options}</select>
-            ${this.renderEntitySelect("entity", link.entity, "Choose flow entity")}
+            ${this.renderEntitySelect("entity", link.entity, "Choose flow entity", "power")}
             <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
             <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
             <button data-action="remove-link" type="button">X</button>
@@ -977,6 +1140,22 @@ class MergnerPvCardEditor extends HTMLElement {
         const validIds = new Set(nextNodes.map((node) => node.id));
         const nextLinks = links.filter((link) => validIds.has(link.from) && validIds.has(link.to));
         this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links: nextLinks });
+      });
+    });
+
+    root.querySelectorAll<HTMLButtonElement>("button[data-action='drag-node']").forEach((button) => {
+      button.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) {
+          return;
+        }
+
+        const index = Number(button.dataset.index);
+        if (!Number.isFinite(index)) {
+          return;
+        }
+
+        event.preventDefault();
+        this.startNodeDrag(index);
       });
     });
 
@@ -1091,6 +1270,91 @@ class MergnerPvCardEditor extends HTMLElement {
           margin: -6px 0 0;
           color: var(--secondary-text-color);
           font-size: 0.84rem;
+        }
+
+        .layout-canvas-wrap {
+          display: grid;
+          gap: 10px;
+        }
+
+        .layout-hint {
+          color: var(--secondary-text-color);
+          font-size: 0.82rem;
+        }
+
+        .layout-canvas {
+          position: relative;
+          min-height: 280px;
+          border-radius: 18px;
+          overflow: hidden;
+          background:
+            linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            radial-gradient(circle at 20% 20%, rgba(116, 224, 203, 0.18), transparent 40%),
+            #0f2f3a;
+          background-size: 28px 28px, 28px 28px, auto, auto;
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          touch-action: none;
+        }
+
+        .layout-lines {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .layout-lines line {
+          stroke: rgba(255, 255, 255, 0.42);
+          stroke-width: 1.2;
+          stroke-dasharray: 4 4;
+        }
+
+        .layout-node {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          width: 90px;
+          min-height: 90px;
+          border-radius: 50%;
+          padding: 10px;
+          display: grid;
+          gap: 6px;
+          place-items: center;
+          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
+          cursor: grab;
+          user-select: none;
+        }
+
+        .layout-node:active {
+          cursor: grabbing;
+        }
+
+        .layout-node-media {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.14);
+          color: #fff;
+          font-weight: 700;
+        }
+
+        .layout-node-media img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .layout-node-label {
+          max-width: 64px;
+          font-size: 0.72rem;
+          line-height: 1.2;
+          text-align: center;
+          color: #f5fbfb;
         }
 
         h4 {
@@ -1253,6 +1517,11 @@ class MergnerPvCardEditor extends HTMLElement {
             grid-template-columns: 1fr;
           }
 
+          .layout-node {
+            width: 82px;
+            min-height: 82px;
+          }
+
           .card-head {
             align-items: flex-start;
             flex-direction: column;
@@ -1270,6 +1539,12 @@ class MergnerPvCardEditor extends HTMLElement {
               <input id="title" value="${this.safeText(this.safeConfig.title ?? "PV Flow")}" placeholder="PV Flow" />
             </label>
           </div>
+        </section>
+
+        <section class="panel">
+          <h3 class="panel-title">Layout</h3>
+          <p class="panel-copy">Place devices visually. The X and Y fields update while you drag.</p>
+          ${this.renderLayoutCanvas(nodes, links)}
         </section>
 
         <section class="panel">
