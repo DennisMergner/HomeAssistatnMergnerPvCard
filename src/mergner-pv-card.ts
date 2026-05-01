@@ -1502,42 +1502,51 @@ class MergnerPvCardEditor extends HTMLElement {
               </div>
             </div>
             <div class="metric-grid">
-              <label>
-                <span>Primary entity</span>
-                ${this.renderEntitySelect(`node-${idx}-entity`, "entity", node.entity, "Choose primary entity", this.getNodeEntityFilter(node, "entity"))}
-              </label>
-              <label>
-                <span>Primary label</span>
-                <input data-field="entityLabel" value="${this.safeText(node.entityLabel ?? "")}" placeholder="Charge / Discharge" />
-              </label>
-              <label>
-                <span>Primary unit</span>
-                <input data-field="unit" value="${this.safeText(node.unit ?? "")}" placeholder="auto / W" />
-              </label>
-              <label>
-                <span>Secondary entity</span>
-                ${this.renderEntitySelect(`node-${idx}-secondary`, "secondaryEntity", node.secondaryEntity, "Choose secondary entity", this.getNodeEntityFilter(node, "secondaryEntity"))}
-              </label>
-              <label>
-                <span>Secondary label</span>
-                <input data-field="secondaryLabel" value="${this.safeText(node.secondaryLabel ?? "")}" placeholder="SOC" />
-              </label>
-              <label>
-                <span>Secondary unit</span>
-                <input data-field="secondaryUnit" value="${this.safeText(node.secondaryUnit ?? "")}" placeholder="auto / %" />
-              </label>
-              <label>
-                <span>Tertiary entity</span>
-                ${this.renderEntitySelect(`node-${idx}-tertiary`, "tertiaryEntity", node.tertiaryEntity, "Choose tertiary entity", this.getNodeEntityFilter(node, "tertiaryEntity"))}
-              </label>
-              <label>
-                <span>Tertiary label</span>
-                <input data-field="tertiaryLabel" value="${this.safeText(node.tertiaryLabel ?? "")}" placeholder="Today" />
-              </label>
-              <label>
-                <span>Tertiary unit</span>
-                <input data-field="tertiaryUnit" value="${this.safeText(node.tertiaryUnit ?? "")}" placeholder="auto / kWh" />
-              </label>
+              <section class="metric-group">
+                <h5>Primary</h5>
+                <label>
+                  <span>Entity</span>
+                  ${this.renderEntitySelect(`node-${idx}-entity`, "entity", node.entity, "Choose primary entity", this.getNodeEntityFilter(node, "entity"))}
+                </label>
+                <label>
+                  <span>Label</span>
+                  <input data-field="entityLabel" value="${this.safeText(node.entityLabel ?? "")}" placeholder="Charge / Discharge" />
+                </label>
+                <label>
+                  <span>Unit</span>
+                  <input data-field="unit" value="${this.safeText(node.unit ?? "")}" placeholder="auto / W" />
+                </label>
+              </section>
+              <section class="metric-group">
+                <h5>Secondary</h5>
+                <label>
+                  <span>Entity</span>
+                  ${this.renderEntitySelect(`node-${idx}-secondary`, "secondaryEntity", node.secondaryEntity, "Choose secondary entity", this.getNodeEntityFilter(node, "secondaryEntity"))}
+                </label>
+                <label>
+                  <span>Label</span>
+                  <input data-field="secondaryLabel" value="${this.safeText(node.secondaryLabel ?? "")}" placeholder="SOC" />
+                </label>
+                <label>
+                  <span>Unit</span>
+                  <input data-field="secondaryUnit" value="${this.safeText(node.secondaryUnit ?? "")}" placeholder="auto / %" />
+                </label>
+              </section>
+              <section class="metric-group">
+                <h5>Tertiary</h5>
+                <label>
+                  <span>Entity</span>
+                  ${this.renderEntitySelect(`node-${idx}-tertiary`, "tertiaryEntity", node.tertiaryEntity, "Choose tertiary entity", this.getNodeEntityFilter(node, "tertiaryEntity"))}
+                </label>
+                <label>
+                  <span>Label</span>
+                  <input data-field="tertiaryLabel" value="${this.safeText(node.tertiaryLabel ?? "")}" placeholder="Today" />
+                </label>
+                <label>
+                  <span>Unit</span>
+                  <input data-field="tertiaryUnit" value="${this.safeText(node.tertiaryUnit ?? "")}" placeholder="auto / kWh" />
+                </label>
+              </section>
             </div>
           </section>
         `
@@ -1553,23 +1562,57 @@ class MergnerPvCardEditor extends HTMLElement {
     return links
       .map(
         (link, idx) => `
-          <div class="row" data-kind="link" data-index="${idx}">
-            <select data-field="from">${options}</select>
-            <select data-field="to">${options}</select>
-            ${this.renderEntitySelect(`link-${idx}-entity`, "entity", link.entity, "Choose flow entity", "power")}
-            <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
-            <select data-field="labelPosition">
-              <option value="top" ${(link.labelPosition ?? "top") === "top" ? "selected" : ""}>Label top</option>
-              <option value="bottom" ${(link.labelPosition ?? "top") === "bottom" ? "selected" : ""}>Label bottom</option>
-            </select>
-            ${this.renderEntitySelect(`link-${idx}-value-entity`, "valueEntity", link.valueEntity, "Choose value entity", "any")}
-            <select data-field="valuePosition">
-              <option value="top" ${(link.valuePosition ?? "bottom") === "top" ? "selected" : ""}>Value top</option>
-              <option value="bottom" ${(link.valuePosition ?? "bottom") === "bottom" ? "selected" : ""}>Value bottom</option>
-            </select>
-            <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
-            <button data-action="remove-link" type="button">X</button>
-          </div>
+          <section class="row link-card" data-kind="link" data-index="${idx}">
+            <div class="card-head">
+              <strong>Flow ${idx + 1}</strong>
+              <button data-action="remove-link" type="button">Remove flow</button>
+            </div>
+            <p class="link-hint">Configure source/target first, then set power entity and optional line labels.</p>
+            <div class="link-grid">
+              <label>
+                <span>From device</span>
+                <select data-field="from">${options}</select>
+              </label>
+              <label>
+                <span>To device</span>
+                <select data-field="to">${options}</select>
+              </label>
+              <label class="link-wide">
+                <span>Flow power entity</span>
+                ${this.renderEntitySelect(`link-${idx}-entity`, "entity", link.entity, "Choose flow entity", "power")}
+              </label>
+              <label class="inline-toggle">
+                <span>Direction</span>
+                <span class="inline-toggle-row"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />Invert direction</span>
+              </label>
+              <label>
+                <span>Line label text</span>
+                <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
+              </label>
+              <label>
+                <span>Line label position</span>
+                <select data-field="labelPosition">
+                  <option value="top" ${(link.labelPosition ?? "top") === "top" ? "selected" : ""}>Top</option>
+                  <option value="bottom" ${(link.labelPosition ?? "top") === "bottom" ? "selected" : ""}>Bottom</option>
+                </select>
+              </label>
+              <label class="link-wide">
+                <span>Value entity on line</span>
+                ${this.renderEntitySelect(`link-${idx}-value-entity`, "valueEntity", link.valueEntity, "Choose value entity", "any")}
+              </label>
+              <label>
+                <span>Value position</span>
+                <select data-field="valuePosition">
+                  <option value="top" ${(link.valuePosition ?? "bottom") === "top" ? "selected" : ""}>Top</option>
+                  <option value="bottom" ${(link.valuePosition ?? "bottom") === "bottom" ? "selected" : ""}>Bottom</option>
+                </select>
+              </label>
+              <label>
+                <span>Value unit override</span>
+                <input data-field="valueUnit" value="${this.safeText(link.valueUnit ?? "")}" placeholder="auto / W / kW" />
+              </label>
+            </div>
+          </section>
         `
       )
       .join("");
@@ -1995,6 +2038,23 @@ class MergnerPvCardEditor extends HTMLElement {
           grid-template-columns: 1fr;
         }
 
+        .metric-group {
+          display: grid;
+          gap: 8px;
+          padding: 10px;
+          border-radius: 10px;
+          border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
+          background: color-mix(in srgb, var(--secondary-background-color, rgba(127, 127, 127, 0.08)) 78%, transparent);
+        }
+
+        .metric-group h5 {
+          margin: 0;
+          font-size: 0.8rem;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+          color: var(--secondary-text-color);
+        }
+
         .entity-select-wrap {
           display: grid;
           gap: 6px;
@@ -2059,15 +2119,59 @@ class MergnerPvCardEditor extends HTMLElement {
           grid-template-columns: 1fr;
         }
 
+        .link-card {
+          gap: 10px;
+          padding: 12px;
+          border-radius: 14px;
+          border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
+          background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
+        }
+
+        .link-hint {
+          margin: 0;
+          color: var(--secondary-text-color);
+          font-size: 0.78rem;
+        }
+
+        .link-grid {
+          display: grid;
+          gap: 8px;
+          grid-template-columns: 1fr;
+        }
+
+        .link-wide {
+          grid-column: 1 / -1;
+        }
+
+        .inline-toggle-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.84rem;
+        }
+
+        .inline-toggle-row input {
+          width: auto;
+          margin: 0;
+        }
+
         @media (min-width: 980px) {
           .node-grid,
           .metric-grid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
+          .metric-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+          }
+
           .image-tools {
             grid-template-columns: minmax(0, 1fr) auto 84px;
             align-items: end;
+          }
+
+          .link-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
           }
 
           .flow-style-grid {
