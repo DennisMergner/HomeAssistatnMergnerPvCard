@@ -437,6 +437,15 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     }
     return "idle";
   }
+  getLinkDirectionalLabel(link, direction) {
+    if (direction === "forward" && link.forwardLabel?.trim()) {
+      return link.forwardLabel.trim();
+    }
+    if (direction === "reverse" && link.reverseLabel?.trim()) {
+      return link.reverseLabel.trim();
+    }
+    return link.label?.trim() ?? "";
+  }
   getLinkPowerWatts(link) {
     const absValue = Math.abs(this.getSignedFlowPowerWatts(link));
     if (!Number.isFinite(absValue)) {
@@ -482,7 +491,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       const normalY = dx / length;
       const labelPosition = link.labelPosition ?? "top";
       const valuePosition = link.valuePosition ?? "bottom";
-      const labelText = link.label?.trim() ?? "";
+      const direction = this.resolveLinkDirection(link);
+      const labelText = this.getLinkDirectionalLabel(link, direction);
       const valueText = this.getLinkValue(link);
       const labelCollisionOffset = labelText && valueText && labelPosition === valuePosition ? 1.8 : 0;
       const valueCollisionOffset = labelText && valueText && labelPosition === valuePosition ? -1.8 : 0;
@@ -492,7 +502,6 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       const labelY = midY + normalY * labelDistance;
       const valueX = midX + normalX * valueDistance;
       const valueY = midY + normalY * valueDistance;
-      const direction = this.resolveLinkDirection(link);
       const powerWatts = this.getLinkPowerWatts(link);
       const strokeWidth = this.getFlowStrokeWidth(powerWatts, direction, flowStyle.baseThickness);
       const dashLength = this.getFlowDashLength(powerWatts, direction);
@@ -542,11 +551,31 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           position: relative;
         }
 
+        .title-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
         .title {
           font-size: 1.05rem;
           font-weight: 700;
-          margin-bottom: 12px;
+          margin: 0;
           letter-spacing: 0.02em;
+        }
+
+        .title-version {
+          font-size: 0.72rem;
+          letter-spacing: 0.04em;
+          color: #daf6f6;
+          background: rgba(0, 0, 0, 0.34);
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 999px;
+          padding: 3px 9px;
+          line-height: 1;
+          flex-shrink: 0;
         }
 
         .card-version {
@@ -848,7 +877,10 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       </style>
 
       <ha-card>
-        <div class="title">${this.safeText(normalized.title)}</div>
+        <div class="title-row">
+          <div class="title">${this.safeText(normalized.title)}</div>
+          <div class="title-version">v${this.safeText(CARD_VERSION)}</div>
+        </div>
         ${this.renderSummary(normalized.nodes)}
         <div class="flow-wrap">
           ${this.renderLinks(fittedNodes, normalized.links, normalized.flowStyle)}
@@ -1364,6 +1396,14 @@ var MergnerPvCardEditor = class extends HTMLElement {
               <label>
                 <span>Line label text</span>
                 <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
+              </label>
+              <label>
+                <span>Forward label text (from -> to)</span>
+                <input data-field="forwardLabel" value="${this.safeText(link.forwardLabel ?? "")}" placeholder="e.g. Zum Netz" />
+              </label>
+              <label>
+                <span>Reverse label text (to -> from)</span>
+                <input data-field="reverseLabel" value="${this.safeText(link.reverseLabel ?? "")}" placeholder="e.g. Vom Netz" />
               </label>
               <label>
                 <span>Line label position</span>
@@ -1978,14 +2018,15 @@ var MergnerPvCardEditor = class extends HTMLElement {
         }
 
         .editor-version {
-          justify-self: end;
+          justify-self: start;
           margin-top: 2px;
-          font-size: 0.76rem;
-          color: var(--secondary-text-color);
-          background: color-mix(in srgb, var(--secondary-background-color, rgba(127, 127, 127, 0.08)) 80%, transparent);
-          border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.35));
+          font-size: 0.86rem;
+          font-weight: 700;
+          color: var(--primary-text-color);
+          background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+          border: 1px solid color-mix(in srgb, var(--primary-color) 48%, var(--divider-color, rgba(128, 128, 128, 0.35)));
           border-radius: 999px;
-          padding: 3px 10px;
+          padding: 4px 12px;
           line-height: 1;
         }
 
