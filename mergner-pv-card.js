@@ -8,7 +8,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
             <span>${this.safeText(p.label)}</span>
             <strong>${this.safeText(this.formatMetricValue(p.value,p.unit))}</strong>
           </div>
-        `).join(""),m=r===void 0?"":`
+        `).join(""),g=r===void 0?"":`
           <div class="battery-meter" aria-label="Battery level ${r}%">
             <div class="battery-meter-fill" style="width:${r}%;"></div>
           </div>
@@ -22,12 +22,12 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
             <div class="node-label node-chip">${o}</div>
             <div class="node-value node-chip">${this.safeText(this.formatMetricValue(t.value,t.unit))}</div>
             <div class="node-value-label node-chip">${this.safeText(t.label)}</div>
-            ${m}
+            ${g}
           </div>
         </div>
         ${u?`<div class="node-stats">${u}</div>`:""}
       </article>
-    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}getLinkValue(e){if(!e.valueEntity?.trim())return"";let i=this.getState(e.valueEntity),a=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(i,a)}resolveLinkDirection(e){if(!e.entity)return"idle";let i=this.parseNumber(e.entity);return e.invert&&(i=-i),i>0?"forward":i<0?"reverse":"idle"}renderLinks(e,i){let a=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${i.map(n=>{let r=a.get(n.from),o=a.get(n.to);if(!r||!o)return"";let l=(r.x+o.x)/2,s=(r.y+o.y)/2,d=o.x-r.x,c=o.y-r.y,u=Math.hypot(d,c)||1,m=-c/u,p=d/u,g=n.labelPosition??"top",f=n.valuePosition??"bottom",h=n.label?.trim()??"",b=this.getLinkValue(n),N=h&&b&&g===f?1.8:0,k=h&&b&&g===f?-1.8:0,E=this.getLineAnnotationOffset(g)+N,$=this.getLineAnnotationOffset(f)+k,C=l+m*E,M=s+p*E,T=l+m*$,S=s+p*$,z=this.resolveLinkDirection(n),_=h?`<title>${this.safeText(h)}</title>`:"",F=h?`<text class="flow-annotation flow-annotation-label" x="${C}" y="${M}" text-anchor="middle" dominant-baseline="middle">${this.safeText(h)}</text>`:"",P=b?`<text class="flow-annotation flow-annotation-value" x="${T}" y="${S}" text-anchor="middle" dominant-baseline="middle">${this.safeText(b)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${z}" x1="${r.x}" y1="${r.y}" x2="${o.x}" y2="${o.y}">${_}</line>${F}${P}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.normalizeConfig(this._config??L.getStubConfig());e.innerHTML=`
+    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}getLinkValue(e){if(!e.valueEntity?.trim())return"";let i=this.getState(e.valueEntity),a=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(i,a)}resolveLinkDirection(e){if(!e.entity)return"idle";let i=this.parseNumber(e.entity);return e.invert&&(i=-i),i>0?"forward":i<0?"reverse":"idle"}renderLinks(e,i){let a=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${i.map(n=>{let r=a.get(n.from),o=a.get(n.to);if(!r||!o)return"";let l=(r.x+o.x)/2,s=(r.y+o.y)/2,d=o.x-r.x,c=o.y-r.y,u=Math.hypot(d,c)||1,g=-c/u,p=d/u,m=n.labelPosition??"top",f=n.valuePosition??"bottom",h=n.label?.trim()??"",b=this.getLinkValue(n),N=h&&b&&m===f?1.8:0,k=h&&b&&m===f?-1.8:0,E=this.getLineAnnotationOffset(m)+N,$=this.getLineAnnotationOffset(f)+k,C=l+g*E,M=s+p*E,T=l+g*$,S=s+p*$,z=this.resolveLinkDirection(n),_=h?`<title>${this.safeText(h)}</title>`:"",F=h?`<text class="flow-annotation flow-annotation-label" x="${C}" y="${M}" text-anchor="middle" dominant-baseline="middle">${this.safeText(h)}</text>`:"",P=b?`<text class="flow-annotation flow-annotation-value" x="${T}" y="${S}" text-anchor="middle" dominant-baseline="middle">${this.safeText(b)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${z}" x1="${r.x}" y1="${r.y}" x2="${o.x}" y2="${o.y}">${_}</line>${F}${P}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.normalizeConfig(this._config??L.getStubConfig());e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -345,7 +345,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           ${i.nodes.map(a=>this.renderNode(a)).join("")}
         </div>
       </ha-card>
-    `}},w=class extends HTMLElement{_config;_hass;_dragNodeIndex;_dragEventsBound=!1;_entityIdsSignature="";_layoutZoom=100;_layoutZoomMode="auto";clampEditorNodeSize(e){return Number.isNaN(e)?120:Math.max(40,Math.min(320,e))}safeText(e){return(typeof e=="string"?e:String(e??"")).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampEditorPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}normalizeEditorConfig(e){let i=y.getStubConfig(),a=e??{},t={...i,...a,title:(a.title??i.title??"PV Flow").toString()},r=(Array.isArray(a.nodes)&&a.nodes.length>0?a.nodes:i.nodes??[]).map((d,c)=>({...d,id:(d.id??`node_${c+1}`).toString().trim()||`node_${c+1}`,name:(d.name??`Node ${c+1}`).toString().trim()||`Node ${c+1}`,role:d.role??"custom",x:this.clampEditorPercent(Number(d.x)),y:this.clampEditorPercent(Number(d.y)),size:this.clampEditorNodeSize(Number(d.size??120))})),o=new Set(r.map(d=>d.id)),s=(Array.isArray(a.links)?a.links:i.links??[]).filter(d=>o.has(d.from)&&o.has(d.to));return{...t,nodes:r,links:s}}setConfig(e){this._config=this.normalizeEditorConfig(e),this.render()}set hass(e){let i=Object.keys(e?.states??{}).sort((t,n)=>t.localeCompare(n)).join("|"),a=!this._hass||i!==this._entityIdsSignature;this._hass=e,this._entityIdsSignature=i,a&&this.render()}connectedCallback(){this.bindDragEvents(),this.render()}get safeConfig(){return this._config??y.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,i,a,t){let n=[...e];n[a]={...n[a],...t},this.emitConfig({...this.safeConfig,nodes:n,links:i})}bindDragEvents(){this._dragEventsBound||(window.addEventListener("pointermove",this.handlePointerMove),window.addEventListener("pointerup",this.handlePointerUp),window.addEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!0)}disconnectedCallback(){this._dragEventsBound&&(window.removeEventListener("pointermove",this.handlePointerMove),window.removeEventListener("pointerup",this.handlePointerUp),window.removeEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!1)}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,i)=>e.localeCompare(i))}getEntityUnit(e){let a=this._hass?.states?.[e]?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}getEntityDeviceClass(e){let a=this._hass?.states?.[e]?.attributes?.device_class;return typeof a=="string"?a:""}matchesEntityFilter(e,i){if(i==="any")return!0;let a=this.getEntityUnit(e).toLowerCase(),t=this.getEntityDeviceClass(e).toLowerCase();return i==="power"?/^(w|kw|mw|gw|va|kva)$/.test(a)||["power","apparent_power","reactive_power"].includes(t):i==="energy"?/^(wh|kwh|mwh|gwh)$/.test(a)||t==="energy":a==="%"||t==="battery"}getNodeEntityFilter(e,i){return i==="entity"?"power":i==="secondaryEntity"?e.role==="battery"?"percent":"energy":i==="tertiaryEntity"?"energy":"any"}renderEntitySelect(e,i,a,t="Select entity",n="any"){let r=this.getEntityIds(),o=a?.trim()??"",l=o&&!r.includes(o)?`<option value="${this.safeText(o)}" selected>${this.safeText(o)}</option>`:"",s=r.filter(p=>this.matchesEntityFilter(p,n)),d=r.filter(p=>!s.includes(p)),c=p=>p.map(g=>{let f=g===o?"selected":"";return`<option value="${this.safeText(g)}" ${f}>${this.safeText(g)}</option>`}).join(""),u=s.length>0?`<optgroup label="Recommended">${c(s)}</optgroup>`:"",m=d.length>0?`<optgroup label="All entities">${c(d)}</optgroup>`:"";return`
+    `}},w=class extends HTMLElement{_config;_hass;_dragNodeIndex;_dragEventsBound=!1;_entityIdsSignature="";_layoutZoom=100;_layoutZoomMode="auto";clampEditorNodeSize(e){return Number.isNaN(e)?120:Math.max(40,Math.min(320,e))}safeText(e){return(typeof e=="string"?e:String(e??"")).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampEditorPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}normalizeEditorConfig(e){let i=y.getStubConfig(),a=e??{},t={...i,...a,title:(a.title??i.title??"PV Flow").toString()},r=(Array.isArray(a.nodes)&&a.nodes.length>0?a.nodes:i.nodes??[]).map((d,c)=>({...d,id:(d.id??`node_${c+1}`).toString().trim()||`node_${c+1}`,name:(d.name??`Node ${c+1}`).toString().trim()||`Node ${c+1}`,role:d.role??"custom",x:this.clampEditorPercent(Number(d.x)),y:this.clampEditorPercent(Number(d.y)),size:this.clampEditorNodeSize(Number(d.size??120))})),o=new Set(r.map(d=>d.id)),s=(Array.isArray(a.links)?a.links:i.links??[]).filter(d=>o.has(d.from)&&o.has(d.to));return{...t,nodes:r,links:s}}setConfig(e){this._config=this.normalizeEditorConfig(e),this.render()}set hass(e){let i=Object.keys(e?.states??{}).sort((t,n)=>t.localeCompare(n)).join("|"),a=!this._hass||i!==this._entityIdsSignature;this._hass=e,this._entityIdsSignature=i,a&&this.render()}connectedCallback(){this.bindDragEvents(),this.render()}get safeConfig(){return this._config??y.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,i,a,t){let n=[...e];n[a]={...n[a],...t},this.emitConfig({...this.safeConfig,nodes:n,links:i})}bindDragEvents(){this._dragEventsBound||(window.addEventListener("pointermove",this.handlePointerMove),window.addEventListener("pointerup",this.handlePointerUp),window.addEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!0)}disconnectedCallback(){this._dragEventsBound&&(window.removeEventListener("pointermove",this.handlePointerMove),window.removeEventListener("pointerup",this.handlePointerUp),window.removeEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!1)}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,i)=>e.localeCompare(i))}getEntityUnit(e){let a=this._hass?.states?.[e]?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}getEntityDeviceClass(e){let a=this._hass?.states?.[e]?.attributes?.device_class;return typeof a=="string"?a:""}matchesEntityFilter(e,i){if(i==="any")return!0;let a=this.getEntityUnit(e).toLowerCase(),t=this.getEntityDeviceClass(e).toLowerCase();return i==="power"?/^(w|kw|mw|gw|va|kva)$/.test(a)||["power","apparent_power","reactive_power"].includes(t):i==="energy"?/^(wh|kwh|mwh|gwh)$/.test(a)||t==="energy":a==="%"||t==="battery"}getNodeEntityFilter(e,i){return i==="entity"?"power":i==="secondaryEntity"?e.role==="battery"?"percent":"energy":i==="tertiaryEntity"?"energy":"any"}renderEntitySelect(e,i,a,t="Select entity",n="any"){let r=this.getEntityIds(),o=a?.trim()??"",l=o&&!r.includes(o)?`<option value="${this.safeText(o)}" selected>${this.safeText(o)}</option>`:"",s=r.filter(p=>this.matchesEntityFilter(p,n)),d=r.filter(p=>!s.includes(p)),c=p=>p.map(m=>{let f=m===o?"selected":"";return`<option value="${this.safeText(m)}" ${f}>${this.safeText(m)}</option>`}).join(""),u=s.length>0?`<optgroup label="Recommended">${c(s)}</optgroup>`:"",g=d.length>0?`<optgroup label="All entities">${c(d)}</optgroup>`:"";return`
       <div class="entity-select-wrap">
         <input
           type="search"
@@ -358,20 +358,23 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           <option value="">${this.safeText(t)}</option>
           ${l}
           ${u}
-          ${m}
+          ${g}
         </select>
       </div>
-    `}renderLayoutCanvas(e,i){let a=new Map(e.map(o=>[o.id,o])),t=this.getEffectiveLayoutZoom(e),n=i.map(o=>{let l=a.get(o.from),s=a.get(o.to);if(!l||!s)return"";let d=this.projectLayoutPosition(l.x,t),c=this.projectLayoutPosition(l.y,t),u=this.projectLayoutPosition(s.x,t),m=this.projectLayoutPosition(s.y,t);return`<line x1="${d}" y1="${c}" x2="${u}" y2="${m}"></line>`}).join(""),r=e.map((o,l)=>{let s=o.image?.trim(),d=s?`<img src="${this.safeText(s)}" alt="${this.safeText(o.name)}" />`:`<span>${this.safeText(o.name.slice(0,1).toUpperCase())}</span>`,c=t/100,u=Math.max(24,Math.min(220,Math.round((o.size??120)*c))),m=this.projectLayoutPosition(o.x,t),p=this.projectLayoutPosition(o.y,t);return`
+    `}renderLayoutCanvas(e,i){let a=new Map(e.map(o=>[o.id,o])),t=this.getEffectiveLayoutZoom(e),n=i.map(o=>{let l=a.get(o.from),s=a.get(o.to);if(!l||!s)return"";let d=this.projectLayoutPosition(l.x,t),c=this.projectLayoutPosition(l.y,t),u=this.projectLayoutPosition(s.x,t),g=this.projectLayoutPosition(s.y,t);return`<line x1="${d}" y1="${c}" x2="${u}" y2="${g}"></line>`}).join(""),r=e.map((o,l)=>{let s=o.image?.trim(),d=`<span>${this.safeText(o.name.slice(0,1).toUpperCase())}</span>`,c=t/100,u=Math.max(24,Math.min(220,Math.round((o.size??120)*c))),g=this.projectLayoutPosition(o.x,t),p=this.projectLayoutPosition(o.y,t);return`
           <button
-            class="layout-node"
+            class="layout-node ${s?"has-image":""}"
             data-action="drag-node"
             data-index="${l}"
             type="button"
-            style="--layout-node-size:${u}px; left:${m}%; top:${p}%;"
+            style="--layout-node-size:${u}px; left:${g}%; top:${p}%;"
             aria-label="Drag ${this.safeText(o.name)}"
           >
-            <div class="layout-node-media">${d}</div>
-            <div class="layout-node-label">${this.safeText(o.name)}</div>
+            ${s?`<img class="layout-node-bg-image" src="${this.safeText(s)}" alt="${this.safeText(o.name)}" />`:""}
+            <div class="layout-node-overlay">
+              ${s?"":`<div class="layout-node-media">${d}</div>`}
+              <div class="layout-node-label">${this.safeText(o.name)}</div>
+            </div>
           </button>
         `}).join("");return`
       <div class="layout-canvas-wrap">
@@ -593,15 +596,43 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           min-height: var(--layout-node-size, 90px);
           aspect-ratio: 1 / 1;
           border-radius: 50%;
-          padding: 10px;
+          padding: 0;
           display: grid;
-          gap: 6px;
-          place-items: center;
+          place-items: stretch;
           background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
           border: 1px solid rgba(255, 255, 255, 0.2);
           box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
           cursor: grab;
           user-select: none;
+          overflow: hidden;
+        }
+
+        .layout-node.has-image {
+          background: transparent;
+        }
+
+        .layout-node-bg-image {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          filter: brightness(0.78) saturate(1.04);
+          z-index: 0;
+        }
+
+        .layout-node-overlay {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          height: 100%;
+          display: grid;
+          align-content: center;
+          justify-items: center;
+          gap: 6px;
+          padding: 10px 8px;
+          box-sizing: border-box;
         }
 
         .layout-node:active {
@@ -609,8 +640,8 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
         }
 
         .layout-node-media {
-          width: 34px;
-          height: 34px;
+          width: clamp(20px, calc(var(--layout-node-size, 90px) * 0.34), 42px);
+          height: clamp(20px, calc(var(--layout-node-size, 90px) * 0.34), 42px);
           border-radius: 50%;
           display: grid;
           place-items: center;
@@ -620,18 +651,15 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           font-weight: 700;
         }
 
-        .layout-node-media img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
         .layout-node-label {
-          max-width: 64px;
-          font-size: 0.72rem;
+          max-width: 88%;
+          font-size: clamp(0.56rem, calc(var(--layout-node-size, 90px) * 0.012), 0.78rem);
           line-height: 1.2;
           text-align: center;
           color: #f5fbfb;
+          background: rgba(0, 0, 0, 0.45);
+          padding: 2px 7px;
+          border-radius: 8px;
         }
 
         h4 {

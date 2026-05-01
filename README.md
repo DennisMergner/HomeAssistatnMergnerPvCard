@@ -19,6 +19,7 @@ Custom Home Assistant Lovelace card for PV energy flow visualization with dynami
 - Layout preview zoom control for more realistic positioning against final card
 - Auto-fit and manual zoom mode for layout positioning
 - Layout zoom now affects both circle size and spacing in drag preview
+- Drag preview circles now render device image as full circle background
 - Recommended entity groups for power, energy and battery percentage fields
 - Search input above each entity dropdown for fast sensor lookup
 - Flow lines can show label and live entity value, each configurable top or bottom

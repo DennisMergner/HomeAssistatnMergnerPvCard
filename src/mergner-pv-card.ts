@@ -1094,9 +1094,7 @@ class MergnerPvCardEditor extends HTMLElement {
     const nodeMarkup = nodes
       .map((node, index) => {
         const image = node.image?.trim();
-        const media = image
-          ? `<img src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />`
-          : `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
+        const media = `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
         const zoomFactor = effectiveZoom / 100;
         const layoutSize = Math.max(24, Math.min(220, Math.round((node.size ?? 120) * zoomFactor)));
         const projectedX = this.projectLayoutPosition(node.x, effectiveZoom);
@@ -1104,15 +1102,18 @@ class MergnerPvCardEditor extends HTMLElement {
 
         return `
           <button
-            class="layout-node"
+            class="layout-node ${image ? "has-image" : ""}"
             data-action="drag-node"
             data-index="${index}"
             type="button"
             style="--layout-node-size:${layoutSize}px; left:${projectedX}%; top:${projectedY}%;"
             aria-label="Drag ${this.safeText(node.name)}"
           >
-            <div class="layout-node-media">${media}</div>
-            <div class="layout-node-label">${this.safeText(node.name)}</div>
+            ${image ? `<img class="layout-node-bg-image" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
+            <div class="layout-node-overlay">
+              ${image ? "" : `<div class="layout-node-media">${media}</div>`}
+              <div class="layout-node-label">${this.safeText(node.name)}</div>
+            </div>
           </button>
         `;
       })
@@ -1630,15 +1631,43 @@ class MergnerPvCardEditor extends HTMLElement {
           min-height: var(--layout-node-size, 90px);
           aspect-ratio: 1 / 1;
           border-radius: 50%;
-          padding: 10px;
+          padding: 0;
           display: grid;
-          gap: 6px;
-          place-items: center;
+          place-items: stretch;
           background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.24), rgba(255, 255, 255, 0.08));
           border: 1px solid rgba(255, 255, 255, 0.2);
           box-shadow: 0 10px 18px rgba(0, 0, 0, 0.2);
           cursor: grab;
           user-select: none;
+          overflow: hidden;
+        }
+
+        .layout-node.has-image {
+          background: transparent;
+        }
+
+        .layout-node-bg-image {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          filter: brightness(0.78) saturate(1.04);
+          z-index: 0;
+        }
+
+        .layout-node-overlay {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          height: 100%;
+          display: grid;
+          align-content: center;
+          justify-items: center;
+          gap: 6px;
+          padding: 10px 8px;
+          box-sizing: border-box;
         }
 
         .layout-node:active {
@@ -1646,8 +1675,8 @@ class MergnerPvCardEditor extends HTMLElement {
         }
 
         .layout-node-media {
-          width: 34px;
-          height: 34px;
+          width: clamp(20px, calc(var(--layout-node-size, 90px) * 0.34), 42px);
+          height: clamp(20px, calc(var(--layout-node-size, 90px) * 0.34), 42px);
           border-radius: 50%;
           display: grid;
           place-items: center;
@@ -1657,18 +1686,15 @@ class MergnerPvCardEditor extends HTMLElement {
           font-weight: 700;
         }
 
-        .layout-node-media img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
         .layout-node-label {
-          max-width: 64px;
-          font-size: 0.72rem;
+          max-width: 88%;
+          font-size: clamp(0.56rem, calc(var(--layout-node-size, 90px) * 0.012), 0.78rem);
           line-height: 1.2;
           text-align: center;
           color: #f5fbfb;
+          background: rgba(0, 0, 0, 0.45);
+          padding: 2px 7px;
+          border-radius: 8px;
         }
 
         h4 {
