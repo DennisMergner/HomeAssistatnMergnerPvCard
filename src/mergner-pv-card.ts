@@ -687,6 +687,7 @@ class MergnerPvCard extends HTMLElement {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          object-position: center;
           filter: brightness(0.72) saturate(1.05);
           z-index: 0;
         }
@@ -719,7 +720,7 @@ class MergnerPvCard extends HTMLElement {
           background: rgba(255, 255, 255, 0.1);
         }
 
-        .node img {
+        .node-media img {
           width: 42px;
           height: 42px;
           object-fit: cover;
