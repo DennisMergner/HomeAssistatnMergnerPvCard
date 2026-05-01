@@ -189,7 +189,7 @@ var w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           backdrop-filter: blur(6px);
           box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.18);
           position: relative;
-          overflow: hidden;
+          overflow: visible;
         }
 
         .node-bg-image {
@@ -199,6 +199,7 @@ var w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           height: 100%;
           object-fit: cover;
           object-position: center;
+          border-radius: 50%;
           filter: brightness(0.72) saturate(1.05);
           z-index: 0;
         }
