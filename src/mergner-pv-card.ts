@@ -55,11 +55,22 @@ type FlowLink = {
   valueUnit?: string;
 };
 
+type FlowStyleConfig = {
+  forwardColor?: string;
+  reverseColor?: string;
+  idleColor?: string;
+  textColor?: string;
+  baseThickness?: number;
+  textSize?: number;
+  textOutline?: number;
+};
+
 type CardConfig = LegacyConfig & {
   type: string;
   title?: string;
   nodes?: FlowNode[];
   links?: FlowLink[];
+  flowStyle?: FlowStyleConfig;
 };
 
 type NodeMetric = {
@@ -71,6 +82,23 @@ type NodeMetric = {
 
 type RenderFlowNode = FlowNode & {
   renderSize: number;
+};
+
+type ResolvedFlowStyle = {
+  forwardColor: string;
+  reverseColor: string;
+  idleColor: string;
+  textColor: string;
+  baseThickness: number;
+  textSize: number;
+  textOutline: number;
+};
+
+type NormalizedCardConfig = {
+  title: string;
+  nodes: FlowNode[];
+  links: FlowLink[];
+  flowStyle: ResolvedFlowStyle;
 };
 
 type EntityFilterKind = "power" | "energy" | "percent" | "any";
@@ -99,6 +127,16 @@ const DEFAULT_LINKS: FlowLink[] = [
   { from: "battery", to: "house", entity: "sensor.battery_to_house_power" },
   { from: "grid", to: "house", entity: "sensor.grid_to_house_power" }
 ];
+
+const DEFAULT_FLOW_STYLE: ResolvedFlowStyle = {
+  forwardColor: "#74e0cb",
+  reverseColor: "#ffb166",
+  idleColor: "#7e8f92",
+  textColor: "#d8fff6",
+  baseThickness: 0.78,
+  textSize: 1.7,
+  textOutline: 0.28
+};
 
 class MergnerPvCard extends HTMLElement {
   private _config?: CardConfig;
@@ -165,6 +203,27 @@ class MergnerPvCard extends HTMLElement {
       return 120;
     }
     return Math.max(40, Math.min(320, value));
+  }
+
+  private sanitizeHexColor(input: unknown, fallback: string): string {
+    const value = typeof input === "string" ? input.trim() : "";
+    if (/^#([0-9a-fA-F]{6})$/.test(value) || /^#([0-9a-fA-F]{3})$/.test(value)) {
+      return value;
+    }
+    return fallback;
+  }
+
+  private normalizeFlowStyle(style?: FlowStyleConfig): ResolvedFlowStyle {
+    const source = style ?? {};
+    return {
+      forwardColor: this.sanitizeHexColor(source.forwardColor, DEFAULT_FLOW_STYLE.forwardColor),
+      reverseColor: this.sanitizeHexColor(source.reverseColor, DEFAULT_FLOW_STYLE.reverseColor),
+      idleColor: this.sanitizeHexColor(source.idleColor, DEFAULT_FLOW_STYLE.idleColor),
+      textColor: this.sanitizeHexColor(source.textColor, DEFAULT_FLOW_STYLE.textColor),
+      baseThickness: Math.max(0.4, Math.min(1.6, Number(source.baseThickness ?? DEFAULT_FLOW_STYLE.baseThickness))),
+      textSize: Math.max(1.1, Math.min(3.3, Number(source.textSize ?? DEFAULT_FLOW_STYLE.textSize))),
+      textOutline: Math.max(0, Math.min(0.8, Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline)))
+    };
   }
 
   private getEntity(entityId?: string): EntityState | undefined {
@@ -349,8 +408,9 @@ class MergnerPvCard extends HTMLElement {
     return `<div class="summary-row">${items}</div>`;
   }
 
-  private normalizeConfig(config: CardConfig): Required<Pick<CardConfig, "title" | "nodes" | "links">> {
+  private normalizeConfig(config: CardConfig): NormalizedCardConfig {
     const title = config.title ?? "PV Flow";
+    const flowStyle = this.normalizeFlowStyle(config.flowStyle);
 
     if (config.nodes && config.nodes.length > 0) {
       const nodes = config.nodes.map((node) => ({
@@ -367,7 +427,7 @@ class MergnerPvCard extends HTMLElement {
         nodes.some((n) => n.id === link.from) && nodes.some((n) => n.id === link.to)
       );
 
-      return { title, nodes, links };
+      return { title, nodes, links, flowStyle };
     }
 
     const legacyNodes = DEFAULT_NODES.map((node) => ({
@@ -379,7 +439,8 @@ class MergnerPvCard extends HTMLElement {
     return {
       title,
       nodes: legacyNodes,
-      links: DEFAULT_LINKS
+      links: DEFAULT_LINKS,
+      flowStyle
     };
   }
 
@@ -523,12 +584,12 @@ class MergnerPvCard extends HTMLElement {
     return absValue;
   }
 
-  private getFlowStrokeWidth(powerWatts: number, direction: "forward" | "reverse" | "idle"): number {
+  private getFlowStrokeWidth(powerWatts: number, direction: "forward" | "reverse" | "idle", baseThickness: number): number {
     if (direction === "idle") {
-      return 0.56;
+      return Math.max(0.35, 0.56 * baseThickness);
     }
     const normalized = Math.min(1, Math.sqrt(powerWatts / 7000));
-    return 0.56 + normalized * 0.98;
+    return (0.56 + normalized * 0.98) * baseThickness;
   }
 
   private getFlowDashLength(powerWatts: number, direction: "forward" | "reverse" | "idle"): number {
@@ -547,7 +608,7 @@ class MergnerPvCard extends HTMLElement {
     return 2.2 - normalized * 1.65;
   }
 
-  private renderLinks(nodes: RenderFlowNode[], links: FlowLink[]): string {
+  private renderLinks(nodes: RenderFlowNode[], links: FlowLink[], flowStyle: ResolvedFlowStyle): string {
     const lookup = new Map(nodes.map((node) => [node.id, node]));
 
     const lines = links
@@ -583,7 +644,7 @@ class MergnerPvCard extends HTMLElement {
 
         const direction = this.resolveLinkDirection(link);
         const powerWatts = this.getLinkPowerWatts(link);
-        const strokeWidth = this.getFlowStrokeWidth(powerWatts, direction);
+        const strokeWidth = this.getFlowStrokeWidth(powerWatts, direction, flowStyle.baseThickness);
         const dashLength = this.getFlowDashLength(powerWatts, direction);
         const dashGap = Math.max(2.2, dashLength * 0.85);
         const durationSeconds = this.getFlowDurationSeconds(powerWatts, direction);
@@ -625,9 +686,12 @@ class MergnerPvCard extends HTMLElement {
           --pv-card-bg: linear-gradient(135deg, #07151e 0%, #0f2f3a 45%, #1f4e55 100%);
           --pv-card-text: #e8f6f6;
           --pv-card-muted: #acd2d3;
-          --flow-forward: #74e0cb;
-          --flow-reverse: #ffb166;
-          --flow-idle: #7e8f92;
+          --flow-forward: ${normalized.flowStyle.forwardColor};
+          --flow-reverse: ${normalized.flowStyle.reverseColor};
+          --flow-idle: ${normalized.flowStyle.idleColor};
+          --flow-annotation-color: ${normalized.flowStyle.textColor};
+          --flow-annotation-size: ${normalized.flowStyle.textSize}px;
+          --flow-annotation-stroke: ${normalized.flowStyle.textOutline}px;
           --pv-card-node-bg: rgba(255, 255, 255, 0.08);
 
           background: var(--pv-card-bg);
@@ -730,12 +794,12 @@ class MergnerPvCard extends HTMLElement {
         }
 
         .flow-annotation {
-          font-size: 2.4px;
+          font-size: var(--flow-annotation-size, 1.7px);
           font-weight: 700;
-          fill: #f5fbfb;
+          fill: var(--flow-annotation-color, #d8fff6);
           paint-order: stroke;
           stroke: rgba(0, 0, 0, 0.72);
-          stroke-width: 1.2px;
+          stroke-width: var(--flow-annotation-stroke, 0.28px);
           stroke-linejoin: round;
         }
 
@@ -931,7 +995,7 @@ class MergnerPvCard extends HTMLElement {
         <div class="title">${this.safeText(normalized.title)}</div>
         ${this.renderSummary(normalized.nodes)}
         <div class="flow-wrap">
-          ${this.renderLinks(fittedNodes, normalized.links)}
+          ${this.renderLinks(fittedNodes, normalized.links, normalized.flowStyle)}
           ${fittedNodes.map((node) => this.renderNode(node)).join("")}
         </div>
       </ha-card>
@@ -953,6 +1017,34 @@ class MergnerPvCardEditor extends HTMLElement {
       return 120;
     }
     return Math.max(40, Math.min(320, value));
+  }
+
+  private clampFlowSetting(value: number, min: number, max: number, fallback: number): number {
+    if (!Number.isFinite(value)) {
+      return fallback;
+    }
+    return Math.max(min, Math.min(max, value));
+  }
+
+  private sanitizeEditorHexColor(input: unknown, fallback: string): string {
+    const value = typeof input === "string" ? input.trim() : "";
+    if (/^#([0-9a-fA-F]{6})$/.test(value) || /^#([0-9a-fA-F]{3})$/.test(value)) {
+      return value;
+    }
+    return fallback;
+  }
+
+  private normalizeEditorFlowStyle(style?: FlowStyleConfig): ResolvedFlowStyle {
+    const source = style ?? {};
+    return {
+      forwardColor: this.sanitizeEditorHexColor(source.forwardColor, DEFAULT_FLOW_STYLE.forwardColor),
+      reverseColor: this.sanitizeEditorHexColor(source.reverseColor, DEFAULT_FLOW_STYLE.reverseColor),
+      idleColor: this.sanitizeEditorHexColor(source.idleColor, DEFAULT_FLOW_STYLE.idleColor),
+      textColor: this.sanitizeEditorHexColor(source.textColor, DEFAULT_FLOW_STYLE.textColor),
+      baseThickness: this.clampFlowSetting(Number(source.baseThickness ?? DEFAULT_FLOW_STYLE.baseThickness), 0.4, 1.6, DEFAULT_FLOW_STYLE.baseThickness),
+      textSize: this.clampFlowSetting(Number(source.textSize ?? DEFAULT_FLOW_STYLE.textSize), 1.1, 3.3, DEFAULT_FLOW_STYLE.textSize),
+      textOutline: this.clampFlowSetting(Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline), 0, 0.8, DEFAULT_FLOW_STYLE.textOutline)
+    };
   }
 
   private safeText(input: unknown): string {
@@ -993,7 +1085,8 @@ class MergnerPvCardEditor extends HTMLElement {
     const merged: CardConfig = {
       ...base,
       ...incoming,
-      title: (incoming.title ?? base.title ?? "PV Flow").toString()
+      title: (incoming.title ?? base.title ?? "PV Flow").toString(),
+      flowStyle: this.normalizeEditorFlowStyle(incoming.flowStyle)
     };
 
     const rawNodes = Array.isArray(incoming.nodes) && incoming.nodes.length > 0 ? incoming.nodes : (base.nodes ?? []);
@@ -1535,6 +1628,28 @@ class MergnerPvCardEditor extends HTMLElement {
       }
     });
 
+    root.querySelectorAll<HTMLInputElement>("input[data-action='flow-style']").forEach((input) => {
+      const eventName = input.type === "range" ? "input" : "change";
+      input.addEventListener(eventName, () => {
+        const field = input.dataset.field as keyof ResolvedFlowStyle | undefined;
+        if (!field) {
+          return;
+        }
+
+        const current = this.normalizeEditorFlowStyle(this.safeConfig.flowStyle);
+        const next: ResolvedFlowStyle = { ...current };
+        if (input.dataset.kind === "color") {
+          const colorField = field as "forwardColor" | "reverseColor" | "idleColor" | "textColor";
+          next[colorField] = input.value;
+        } else {
+          const numericField = field as "baseThickness" | "textSize" | "textOutline";
+          next[numericField] = Number(input.value);
+        }
+
+        this.emitConfig({ ...this.safeConfig, flowStyle: this.normalizeEditorFlowStyle(next), nodes, links });
+      });
+    });
+
     root.querySelectorAll<HTMLElement>(".node-card[data-kind='node']").forEach((row, index) => {
       row.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input[data-field], select[data-field]").forEach((input) => {
         input.addEventListener("change", () => {
@@ -1721,6 +1836,23 @@ class MergnerPvCardEditor extends HTMLElement {
         .layout-hint {
           color: var(--secondary-text-color);
           font-size: 0.82rem;
+        }
+
+        .flow-style-grid {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 8px;
+        }
+
+        .flow-style-row {
+          display: grid;
+          grid-template-columns: 1fr;
+          gap: 6px;
+        }
+
+        .flow-style-row input[type='color'] {
+          min-height: 40px;
+          padding: 4px;
         }
 
         .layout-canvas {
@@ -1936,6 +2068,15 @@ class MergnerPvCardEditor extends HTMLElement {
             grid-template-columns: minmax(0, 1fr) auto 84px;
             align-items: end;
           }
+
+          .flow-style-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .flow-style-row.range {
+            grid-template-columns: 1fr 92px;
+            align-items: end;
+          }
         }
 
         input,
@@ -2044,6 +2185,40 @@ class MergnerPvCardEditor extends HTMLElement {
           <h3 class="panel-title">Layout</h3>
           <p class="panel-copy">Place devices visually. The X and Y fields update while you drag.</p>
           ${this.renderLayoutCanvas(nodes, links)}
+          <h4>Flow style</h4>
+          <div class="flow-style-grid">
+            <label class="flow-style-row">
+              <span>Flow color (forward)</span>
+              <input data-action="flow-style" data-kind="color" data-field="forwardColor" type="color" value="${this.safeText(this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).forwardColor)}" />
+            </label>
+            <label class="flow-style-row">
+              <span>Flow color (reverse)</span>
+              <input data-action="flow-style" data-kind="color" data-field="reverseColor" type="color" value="${this.safeText(this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).reverseColor)}" />
+            </label>
+            <label class="flow-style-row">
+              <span>Flow color (idle)</span>
+              <input data-action="flow-style" data-kind="color" data-field="idleColor" type="color" value="${this.safeText(this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).idleColor)}" />
+            </label>
+            <label class="flow-style-row">
+              <span>Flow text color</span>
+              <input data-action="flow-style" data-kind="color" data-field="textColor" type="color" value="${this.safeText(this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).textColor)}" />
+            </label>
+            <label class="flow-style-row range">
+              <span>Line thickness</span>
+              <input data-action="flow-style" data-kind="number" data-field="baseThickness" type="range" min="0.4" max="1.6" step="0.05" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).baseThickness.toFixed(2)}" />
+              <input data-action="flow-style" data-kind="number" data-field="baseThickness" type="number" min="0.4" max="1.6" step="0.05" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).baseThickness.toFixed(2)}" />
+            </label>
+            <label class="flow-style-row range">
+              <span>Flow text size</span>
+              <input data-action="flow-style" data-kind="number" data-field="textSize" type="range" min="1.1" max="3.3" step="0.1" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).textSize.toFixed(1)}" />
+              <input data-action="flow-style" data-kind="number" data-field="textSize" type="number" min="1.1" max="3.3" step="0.1" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).textSize.toFixed(1)}" />
+            </label>
+            <label class="flow-style-row range">
+              <span>Text border strength</span>
+              <input data-action="flow-style" data-kind="number" data-field="textOutline" type="range" min="0" max="0.8" step="0.05" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).textOutline.toFixed(2)}" />
+              <input data-action="flow-style" data-kind="number" data-field="textOutline" type="number" min="0" max="0.8" step="0.05" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).textOutline.toFixed(2)}" />
+            </label>
+          </div>
         </section>
 
         <section class="panel">
