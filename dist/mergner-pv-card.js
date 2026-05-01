@@ -33,7 +33,9 @@ var DEFAULT_FLOW_STYLE = {
   textOutline: 0.28,
   linePattern: "dashed",
   speedCurve: "linear",
-  maxAnimatedWatts: 12e3
+  maxAnimatedWatts: 12e3,
+  dynamicOrbCount: false,
+  orbCountMultiplier: 1
 };
 var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
   _config;
@@ -106,7 +108,9 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       textOutline: Math.max(0, Math.min(0.8, Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline))),
       linePattern: source.linePattern === "orb" ? "orb" : "dashed",
       speedCurve: source.speedCurve === "log" ? "log" : "linear",
-      maxAnimatedWatts: Math.max(1200, Math.min(3e4, Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts)))
+      maxAnimatedWatts: Math.max(1200, Math.min(3e4, Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts))),
+      dynamicOrbCount: source.dynamicOrbCount === true,
+      orbCountMultiplier: Math.max(0.2, Math.min(6, Number(source.orbCountMultiplier ?? DEFAULT_FLOW_STYLE.orbCountMultiplier)))
     };
   }
   getEntity(entityId) {
@@ -491,6 +495,17 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     const normalized = this.getFlowPowerNormalized(powerWatts, flowStyle);
     return 2.2 - normalized * 1.65;
   }
+  getFlowParticleCount(powerWatts, direction, flowStyle) {
+    if (direction === "idle") {
+      return 0;
+    }
+    if (!flowStyle.dynamicOrbCount) {
+      return 1;
+    }
+    const normalized = this.getFlowPowerNormalized(powerWatts, flowStyle);
+    const count = 1 + Math.round(normalized * 7 * flowStyle.orbCountMultiplier);
+    return Math.max(1, Math.min(16, count));
+  }
   renderLinks(nodes, links, flowStyle) {
     const lookup = new Map(nodes.map((node) => [node.id, node]));
     const lines = links.map((link, idx) => {
@@ -525,16 +540,22 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       const dashGap = Math.max(2.2, dashLength * 0.85);
       const durationSeconds = this.getFlowDurationSeconds(powerWatts, direction, flowStyle);
       const particleRadius = Math.max(0.55, Math.min(2.4, strokeWidth * 0.9));
+      const particleCount = this.getFlowParticleCount(powerWatts, direction, flowStyle);
       const pathId = `flow-path-${idx}`;
       const lineStyle = `--flow-stroke:${strokeWidth.toFixed(2)}; --flow-dash:${dashLength.toFixed(2)}; --flow-gap:${dashGap.toFixed(2)}; --flow-duration:${durationSeconds.toFixed(2)}s;`;
       const title = labelText ? `<title>${this.safeText(labelText)}</title>` : "";
       const labelMarkup = labelText ? `<text class="flow-annotation flow-annotation-label" x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle">${this.safeText(labelText)}</text>` : "";
       const valueMarkup = valueText ? `<text class="flow-annotation flow-annotation-value" x="${valueX}" y="${valueY}" text-anchor="middle" dominant-baseline="middle">${this.safeText(valueText)}</text>` : "";
-      const particleMarkup = flowStyle.linePattern === "orb" && direction !== "idle" ? `<circle class="flow-particle ${direction}" r="${particleRadius.toFixed(2)}">
-                <animateMotion dur="${durationSeconds.toFixed(2)}s" repeatCount="indefinite" ${direction === "reverse" ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : ""}>
+      const particleMarkup = flowStyle.linePattern === "orb" && particleCount > 0 ? Array.from({ length: particleCount }, (_, particleIndex) => {
+        const staggerSeconds = -(durationSeconds / particleCount * particleIndex);
+        const motionAttrs = direction === "reverse" ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : 'keyPoints="0;1" keyTimes="0;1" calcMode="linear"';
+        return `<circle class="flow-particle ${direction}" r="${particleRadius.toFixed(2)}">
+                <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.92;1" dur="${durationSeconds.toFixed(2)}s" begin="${staggerSeconds.toFixed(2)}s" repeatCount="indefinite"></animate>
+                <animateMotion dur="${durationSeconds.toFixed(2)}s" begin="${staggerSeconds.toFixed(2)}s" repeatCount="indefinite" ${motionAttrs}>
                   <mpath href="#${pathId}"></mpath>
                 </animateMotion>
-              </circle>` : "";
+              </circle>`;
+      }).join("") : "";
       return `<g class="flow-edge"><path id="${pathId}" class="flow-path-helper" d="M ${from.x} ${from.y} L ${to.x} ${to.y}"></path><line class="flow-line ${direction} ${flowStyle.linePattern}" style="${lineStyle}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${particleMarkup}${labelMarkup}${valueMarkup}</g>`;
     }).join("");
     return `<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>`;
@@ -986,7 +1007,9 @@ var MergnerPvCardEditor = class extends HTMLElement {
       textOutline: this.clampFlowSetting(Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline), 0, 0.8, DEFAULT_FLOW_STYLE.textOutline),
       linePattern: source.linePattern === "orb" ? "orb" : "dashed",
       speedCurve: source.speedCurve === "log" ? "log" : "linear",
-      maxAnimatedWatts: this.clampFlowSetting(Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts), 1200, 3e4, DEFAULT_FLOW_STYLE.maxAnimatedWatts)
+      maxAnimatedWatts: this.clampFlowSetting(Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts), 1200, 3e4, DEFAULT_FLOW_STYLE.maxAnimatedWatts),
+      dynamicOrbCount: source.dynamicOrbCount === true,
+      orbCountMultiplier: this.clampFlowSetting(Number(source.orbCountMultiplier ?? DEFAULT_FLOW_STYLE.orbCountMultiplier), 0.2, 6, DEFAULT_FLOW_STYLE.orbCountMultiplier)
     };
   }
   safeText(input) {
@@ -1191,6 +1214,9 @@ var MergnerPvCardEditor = class extends HTMLElement {
           <span class="picker-option-name">Custom</span>
           <span class="picker-option-id">${this.safeText(selectedValue)}</span>
         </div>` : "";
+    const renderedPreferred = renderGroup(preferred, "Empfohlen");
+    const renderedRest = renderGroup(rest, "Alle Entit\xE4ten");
+    const hasResults = Boolean(customOption || renderedPreferred || renderedRest);
     return `
       <div class="entity-picker" data-picker-id="${this.safeText(selectorId)}" data-field="${String(field)}">
         <button class="picker-trigger ${selectedValue ? "has-value" : ""}" type="button" aria-haspopup="listbox" aria-expanded="${isOpen}">
@@ -1214,8 +1240,9 @@ var MergnerPvCardEditor = class extends HTMLElement {
           <div class="picker-options">
             ${selectedValue ? `<div class="picker-option picker-clear" data-value="" role="option"><span class="picker-option-name">\u2014 Auswahl l\xF6schen \u2014</span></div>` : ""}
             ${customOption}
-            ${renderGroup(preferred, "Empfohlen")}
-            ${renderGroup(rest, "Alle Entit\xE4ten")}
+            ${renderedPreferred}
+            ${renderedRest}
+            ${hasResults ? "" : `<div class="picker-no-results">Keine Entit\xE4t gefunden</div>`}
           </div>
         </div>
         ` : ""}
@@ -1580,9 +1607,14 @@ var MergnerPvCardEditor = class extends HTMLElement {
       const index = Number(pickerParentCard.dataset.index);
       const field = picker.dataset.field;
       const pickerId = picker.dataset.pickerId ?? "";
-      picker.querySelector(".picker-trigger")?.addEventListener("click", () => {
+      picker.querySelector(".picker-trigger")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
         this._openEntityPicker = this._openEntityPicker === pickerId ? void 0 : pickerId;
         this.render();
+      });
+      picker.querySelector(".picker-dropdown")?.addEventListener("click", (event) => {
+        event.stopPropagation();
       });
       const searchInput = picker.querySelector(".picker-search");
       if (searchInput) {
@@ -1604,10 +1636,28 @@ var MergnerPvCardEditor = class extends HTMLElement {
             const visible = group.querySelectorAll(".picker-option:not([hidden])");
             group.hidden = visible.length === 0;
           });
+          const hasVisibleOptions = picker.querySelectorAll(".picker-option:not([hidden])").length > 0;
+          const noResults = picker.querySelector(".picker-no-results");
+          if (noResults) {
+            noResults.hidden = hasVisibleOptions;
+          }
+        });
+        searchInput.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            this._openEntityPicker = void 0;
+            this.render();
+          }
         });
       }
       picker.querySelectorAll(".picker-option").forEach((opt) => {
-        opt.addEventListener("click", () => {
+        opt.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+        });
+        opt.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           const newValue = opt.dataset.value ?? "";
           this._openEntityPicker = void 0;
           if (kind === "node") {
@@ -1617,29 +1667,6 @@ var MergnerPvCardEditor = class extends HTMLElement {
             nextLinks[index] = { ...nextLinks[index], [field]: newValue };
             this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
           }
-        });
-      });
-    });
-    root.querySelectorAll("input[data-action='entity-search']").forEach((searchInput) => {
-      searchInput.addEventListener("input", () => {
-        const target = searchInput.dataset.target;
-        if (!target) {
-          return;
-        }
-        const select = root.querySelector(`select[data-entity-select-id='${target}']`);
-        if (!select) {
-          return;
-        }
-        const term = searchInput.value.trim().toLowerCase();
-        select.querySelectorAll("option").forEach((option) => {
-          if (!option.value) {
-            option.hidden = false;
-            return;
-          }
-          const optionText = (option.textContent ?? "").toLowerCase();
-          const optionValue = option.value.toLowerCase();
-          const isSelected = option.selected;
-          option.hidden = term.length > 0 && !isSelected && !optionText.includes(term) && !optionValue.includes(term);
         });
       });
     });
@@ -1679,10 +1706,16 @@ var MergnerPvCardEditor = class extends HTMLElement {
           } else if (field === "speedCurve") {
             next.speedCurve = control.value === "log" ? "log" : "linear";
           }
+        } else if (control.dataset.kind === "bool") {
+          if (control instanceof HTMLInputElement && field === "dynamicOrbCount") {
+            next.dynamicOrbCount = control.checked;
+          }
         } else {
           const numericField = field;
           if (field === "maxAnimatedWatts") {
             next.maxAnimatedWatts = Number(control.value);
+          } else if (field === "orbCountMultiplier") {
+            next.orbCountMultiplier = Number(control.value);
           } else {
             next[numericField] = Number(control.value);
           }
@@ -1872,6 +1905,21 @@ var MergnerPvCardEditor = class extends HTMLElement {
           display: grid;
           grid-template-columns: 1fr;
           gap: 6px;
+        }
+
+        .flow-style-row.checkbox-row {
+          grid-template-columns: 1fr auto;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .flow-style-row.checkbox-row input[type='checkbox'] {
+          width: auto;
+          min-width: 18px;
+          min-height: 18px;
+          margin: 0;
+          padding: 0;
+          accent-color: var(--primary-color, #03a9f4);
         }
 
         .flow-style-row input[type='color'] {
@@ -2233,6 +2281,14 @@ var MergnerPvCardEditor = class extends HTMLElement {
           font-style: italic;
         }
 
+        .picker-no-results {
+          padding: 10px 12px;
+          font-size: 0.8rem;
+          color: var(--secondary-text-color);
+          opacity: 0.85;
+          border-top: 1px solid var(--divider-color, rgba(128,128,128,0.2));
+        }
+
         .image-tools {
           display: grid;
           gap: 8px;
@@ -2529,6 +2585,15 @@ var MergnerPvCardEditor = class extends HTMLElement {
               <span>Max watts for full speed/thickness</span>
               <input data-action="flow-style" data-kind="number" data-field="maxAnimatedWatts" type="range" min="1200" max="30000" step="100" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).maxAnimatedWatts.toFixed(0)}" />
               <input data-action="flow-style" data-kind="number" data-field="maxAnimatedWatts" type="number" min="1200" max="30000" step="100" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).maxAnimatedWatts.toFixed(0)}" />
+            </label>
+            <label class="flow-style-row checkbox-row">
+              <span>Dynamic orb count by power (orb mode)</span>
+              <input data-action="flow-style" data-kind="bool" data-field="dynamicOrbCount" type="checkbox" ${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).dynamicOrbCount ? "checked" : ""} />
+            </label>
+            <label class="flow-style-row range">
+              <span>Orb count multiplier</span>
+              <input data-action="flow-style" data-kind="number" data-field="orbCountMultiplier" type="range" min="0.2" max="6" step="0.1" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).orbCountMultiplier.toFixed(1)}" />
+              <input data-action="flow-style" data-kind="number" data-field="orbCountMultiplier" type="number" min="0.2" max="6" step="0.1" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).orbCountMultiplier.toFixed(1)}" />
             </label>
             <label class="flow-style-row range">
               <span>Flow text size</span>
