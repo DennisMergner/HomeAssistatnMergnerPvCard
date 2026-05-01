@@ -1,6 +1,6 @@
 {
   "name": "homeassistant-mergner-pv-card",
-  "version": "0.0.35",
+  "version": "0.0.36",
   "description": "Custom Home Assistant card for visualizing PV energy flows",
   "type": "module",
   "scripts": {
