@@ -706,13 +706,43 @@ var MergnerPvCardEditor = class extends HTMLElement {
     return Math.max(40, Math.min(320, value));
   }
   safeText(input) {
-    return input.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    const text = typeof input === "string" ? input : String(input ?? "");
+    return text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  }
+  clampEditorPercent(value) {
+    if (Number.isNaN(value)) {
+      return 50;
+    }
+    return Math.max(2, Math.min(98, value));
+  }
+  normalizeEditorConfig(config) {
+    const base = MergnerPvCard.getStubConfig();
+    const merged = {
+      ...base,
+      ...config,
+      title: (config.title ?? base.title ?? "PV Flow").toString()
+    };
+    const rawNodes = Array.isArray(config.nodes) && config.nodes.length > 0 ? config.nodes : base.nodes ?? [];
+    const nodes = rawNodes.map((node, index) => ({
+      ...node,
+      id: (node.id ?? `node_${index + 1}`).toString().trim() || `node_${index + 1}`,
+      name: (node.name ?? `Node ${index + 1}`).toString().trim() || `Node ${index + 1}`,
+      role: node.role ?? "custom",
+      x: this.clampEditorPercent(Number(node.x)),
+      y: this.clampEditorPercent(Number(node.y)),
+      size: this.clampEditorNodeSize(Number(node.size ?? 120))
+    }));
+    const validIds = new Set(nodes.map((node) => node.id));
+    const rawLinks = Array.isArray(config.links) ? config.links : base.links ?? [];
+    const links = rawLinks.filter((link) => validIds.has(link.from) && validIds.has(link.to));
+    return {
+      ...merged,
+      nodes,
+      links
+    };
   }
   setConfig(config) {
-    this._config = {
-      ...MergnerPvCard.getStubConfig(),
-      ...config
-    };
+    this._config = this.normalizeEditorConfig(config);
     this.render();
   }
   set hass(hass) {
