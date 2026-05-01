@@ -63,6 +63,7 @@ run(`git tag ${tag}`);
 if (!noPush) {
   run(`git push origin ${branch}`);
   run(`git push origin ${tag}`);
+  run(`gh release create ${tag} mergner-pv-card.js --title "${tag}" --notes "Release ${tag}" --latest`);
 }
 
 console.log("Release complete");
