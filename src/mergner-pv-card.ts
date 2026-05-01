@@ -537,6 +537,7 @@ class MergnerPvCard extends HTMLElement {
         .flow-wrap {
           position: relative;
           min-height: 340px;
+          aspect-ratio: 4 / 3;
           border-radius: 14px;
           background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 45%);
         }
@@ -588,6 +589,7 @@ class MergnerPvCard extends HTMLElement {
 
         .node-orb {
           min-height: 168px;
+          aspect-ratio: 1 / 1;
           padding: 12px 12px 10px;
           display: grid;
           align-content: start;
@@ -702,7 +704,8 @@ class MergnerPvCard extends HTMLElement {
 
         @media (max-width: 640px) {
           .flow-wrap {
-            min-height: 520px;
+            min-height: 420px;
+            aspect-ratio: 1 / 1;
           }
 
           .node {
@@ -732,6 +735,7 @@ class MergnerPvCardEditor extends HTMLElement {
   private _hass?: HomeAssistant;
   private _dragNodeIndex?: number;
   private _dragEventsBound = false;
+  private _entityIdsSignature = "";
 
   private safeText(input: string): string {
     return input
@@ -750,8 +754,17 @@ class MergnerPvCardEditor extends HTMLElement {
   }
 
   set hass(hass: HomeAssistant) {
+    const nextEntityIdsSignature = Object.keys(hass?.states ?? {})
+      .sort((left, right) => left.localeCompare(right))
+      .join("|");
+    const shouldRender = !this._hass || nextEntityIdsSignature !== this._entityIdsSignature;
+
     this._hass = hass;
-    this.render();
+    this._entityIdsSignature = nextEntityIdsSignature;
+
+    if (shouldRender) {
+      this.render();
+    }
   }
 
   connectedCallback(): void {
@@ -1285,6 +1298,7 @@ class MergnerPvCardEditor extends HTMLElement {
         .layout-canvas {
           position: relative;
           min-height: 280px;
+          aspect-ratio: 4 / 3;
           border-radius: 18px;
           overflow: hidden;
           background:
@@ -1315,6 +1329,7 @@ class MergnerPvCardEditor extends HTMLElement {
           transform: translate(-50%, -50%);
           width: 90px;
           min-height: 90px;
+          aspect-ratio: 1 / 1;
           border-radius: 50%;
           padding: 10px;
           display: grid;
@@ -1515,6 +1530,10 @@ class MergnerPvCardEditor extends HTMLElement {
           .row,
           .row[data-kind='link'] {
             grid-template-columns: 1fr;
+          }
+
+          .layout-canvas {
+            aspect-ratio: 1 / 1;
           }
 
           .layout-node {

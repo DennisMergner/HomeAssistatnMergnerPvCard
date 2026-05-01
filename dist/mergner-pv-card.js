@@ -398,6 +398,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         .flow-wrap {
           position: relative;
           min-height: 340px;
+          aspect-ratio: 4 / 3;
           border-radius: 14px;
           background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 45%);
         }
@@ -449,6 +450,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
         .node-orb {
           min-height: 168px;
+          aspect-ratio: 1 / 1;
           padding: 12px 12px 10px;
           display: grid;
           align-content: start;
@@ -563,7 +565,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
         @media (max-width: 640px) {
           .flow-wrap {
-            min-height: 520px;
+            min-height: 420px;
+            aspect-ratio: 1 / 1;
           }
 
           .node {
@@ -592,6 +595,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
   _hass;
   _dragNodeIndex;
   _dragEventsBound = false;
+  _entityIdsSignature = "";
   safeText(input) {
     return input.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
   }
@@ -603,8 +607,13 @@ var MergnerPvCardEditor = class extends HTMLElement {
     this.render();
   }
   set hass(hass) {
+    const nextEntityIdsSignature = Object.keys(hass?.states ?? {}).sort((left, right) => left.localeCompare(right)).join("|");
+    const shouldRender = !this._hass || nextEntityIdsSignature !== this._entityIdsSignature;
     this._hass = hass;
-    this.render();
+    this._entityIdsSignature = nextEntityIdsSignature;
+    if (shouldRender) {
+      this.render();
+    }
   }
   connectedCallback() {
     this.bindDragEvents();
@@ -1058,6 +1067,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
         .layout-canvas {
           position: relative;
           min-height: 280px;
+          aspect-ratio: 4 / 3;
           border-radius: 18px;
           overflow: hidden;
           background:
@@ -1088,6 +1098,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
           transform: translate(-50%, -50%);
           width: 90px;
           min-height: 90px;
+          aspect-ratio: 1 / 1;
           border-radius: 50%;
           padding: 10px;
           display: grid;
@@ -1288,6 +1299,10 @@ var MergnerPvCardEditor = class extends HTMLElement {
           .row,
           .row[data-kind='link'] {
             grid-template-columns: 1fr;
+          }
+
+          .layout-canvas {
+            aspect-ratio: 1 / 1;
           }
 
           .layout-node {
