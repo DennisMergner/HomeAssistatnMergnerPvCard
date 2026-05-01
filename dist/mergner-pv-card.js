@@ -1,20 +1,20 @@
 // src/mergner-pv-card.ts
 var DEFAULT_NODES = [
-  { id: "solar", name: "Solar", role: "pv", entityLabel: "Power", secondaryLabel: "Today", size: 168, x: 20, y: 20 },
+  { id: "solar", name: "Solar", role: "pv", entityLabel: "Leistung", secondaryLabel: "Heute", size: 168, x: 20, y: 20 },
   {
     id: "battery",
     name: "Battery",
     role: "battery",
-    entityLabel: "Charge / Discharge",
+    entityLabel: "Laden / Entladen",
     secondaryLabel: "SOC",
     secondaryUnit: "%",
-    tertiaryLabel: "Today",
+    tertiaryLabel: "Heute",
     size: 168,
     x: 80,
     y: 20
   },
-  { id: "house", name: "House", role: "house", entityLabel: "Load", secondaryLabel: "Today", size: 168, x: 20, y: 80 },
-  { id: "grid", name: "Grid", role: "grid", entityLabel: "Import / Export", secondaryLabel: "Today", size: 168, x: 80, y: 80 }
+  { id: "house", name: "Haus", role: "house", entityLabel: "Verbrauch", secondaryLabel: "Heute", size: 168, x: 20, y: 80 },
+  { id: "grid", name: "Netz", role: "grid", entityLabel: "Bezug / Einspeisung", secondaryLabel: "Heute", size: 168, x: 80, y: 80 }
 ];
 var DEFAULT_LINKS = [
   { from: "solar", to: "house", entity: "sensor.pv_to_house_power" },
@@ -72,7 +72,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     if (Number.isNaN(value)) {
       return 168;
     }
-    return Math.max(100, Math.min(260, value));
+    return Math.max(40, Math.min(320, value));
   }
   getEntity(entityId) {
     if (!entityId || !this._hass?.states?.[entityId]) {
@@ -101,28 +101,28 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       case "pv":
         return "PV";
       case "battery":
-        return "Battery";
+        return "Batterie";
       case "house":
-        return "House";
+        return "Haus";
       case "grid":
-        return "Grid";
+        return "Netz";
       default:
-        return "Node";
+        return "Knoten";
     }
   }
   defaultMetricLabel(role, slot) {
     if (slot === "primary") {
       switch (role) {
         case "pv":
-          return "Power";
+          return "Leistung";
         case "battery":
-          return "Charge / Discharge";
+          return "Laden / Entladen";
         case "house":
-          return "Load";
+          return "Verbrauch";
         case "grid":
-          return "Import / Export";
+          return "Bezug / Einspeisung";
         default:
-          return "Value";
+          return "Wert";
       }
     }
     if (slot === "secondary") {
@@ -132,12 +132,12 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         case "pv":
         case "house":
         case "grid":
-          return "Today";
+          return "Heute";
         default:
           return "Detail";
       }
     }
-    return role === "battery" ? "Today" : "Extra";
+    return role === "battery" ? "Heute" : "Extra";
   }
   formatMetricValue(value, unit) {
     const trimmedValue = value.trim();
@@ -200,10 +200,10 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
   }
   renderSummary(nodes) {
     const groups = [
-      { role: "pv", label: "Generation", className: "pv" },
-      { role: "house", label: "Load", className: "house" },
-      { role: "battery", label: "Battery", className: "battery" },
-      { role: "grid", label: "Grid", className: "grid" }
+      { role: "pv", label: "Erzeugung", className: "pv" },
+      { role: "house", label: "Verbrauch", className: "house" },
+      { role: "battery", label: "Batterie", className: "battery" },
+      { role: "grid", label: "Netz", className: "grid" }
     ];
     const items = groups.map((group) => {
       const matchingNodes = nodes.filter((node) => this.getNodeRole(node) === group.role && node.entity?.trim());
@@ -441,7 +441,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
         .flow-wrap {
           position: relative;
-          min-height: 340px;
+          min-height: 220px;
           aspect-ratio: 4 / 3;
           border-radius: 14px;
           background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 45%);
@@ -499,6 +499,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
         .node {
           width: var(--node-size);
+          height: var(--node-size);
           max-width: none;
           position: absolute;
           transform: translate(-50%, -50%);
@@ -507,9 +508,11 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         }
 
         .node-orb {
-          min-height: 168px;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
           aspect-ratio: 1 / 1;
-          padding: 12px 12px 10px;
+          padding: 0;
           display: grid;
           align-content: start;
           justify-items: center;
@@ -536,10 +539,17 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           position: relative;
           z-index: 1;
           width: 100%;
+          height: 100%;
           display: grid;
           align-content: start;
           justify-items: center;
           gap: 4px;
+          padding: 10px 10px 8px;
+          box-sizing: border-box;
+        }
+
+        .node-orb.has-image {
+          background: transparent;
         }
 
         .node-media {
@@ -653,16 +663,13 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
         @media (max-width: 640px) {
           .flow-wrap {
-            min-height: 420px;
+            min-height: 260px;
             aspect-ratio: 1 / 1;
           }
 
           .node {
-            width: min(58vw, 176px);
-          }
-
-          .node-orb {
-            min-height: 176px;
+            width: min(58vw, var(--node-size));
+            height: min(58vw, var(--node-size));
           }
         }
       </style>
@@ -826,7 +833,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
     const nodeMarkup = nodes.map((node, index) => {
       const image = node.image?.trim();
       const media = image ? `<img src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
-      const layoutSize = Math.max(66, Math.min(128, Math.round((node.size ?? 168) * 0.55)));
+      const layoutSize = Math.max(24, Math.min(148, Math.round((node.size ?? 168) * 0.55)));
       return `
           <button
             class="layout-node"
@@ -930,7 +937,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
               </label>
               <label>
                 <span>Size (px)</span>
-                <input data-field="size" type="number" min="100" max="260" value="${Math.round(node.size ?? 168)}" />
+                <input data-field="size" type="number" min="40" max="320" value="${Math.round(node.size ?? 168)}" />
               </label>
             </div>
             <div class="image-tools">

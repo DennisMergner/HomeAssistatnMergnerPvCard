@@ -1,4 +1,4 @@
-var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"Today",size:168,x:20,y:20},{id:"battery",name:"Battery",role:"battery",entityLabel:"Charge / Discharge",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Today",size:168,x:80,y:20},{id:"house",name:"House",role:"house",entityLabel:"Load",secondaryLabel:"Today",size:168,x:20,y:80},{id:"grid",name:"Grid",role:"grid",entityLabel:"Import / Export",secondaryLabel:"Today",size:168,x:80,y:80}],x=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],y=class L extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:v,links:x}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){return 5}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}clampNodeSize(e){return Number.isNaN(e)?168:Math.max(100,Math.min(260,e))}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}getUnit(e){let a=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}parseNumber(e){let i=this.getState(e),a=Number.parseFloat(i);return Number.isFinite(a)?a:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Battery";case"house":return"House";case"grid":return"Grid";default:return"Node"}}defaultMetricLabel(e,i){if(i==="primary")switch(e){case"pv":return"Power";case"battery":return"Charge / Discharge";case"house":return"Load";case"grid":return"Import / Export";default:return"Value"}if(i==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":return"Today";default:return"Detail"}return e==="battery"?"Today":"Extra"}formatMetricValue(e,i){let a=e.trim(),t=i.trim();return t?`${a} ${t}`:a}getNodeMetrics(e){let i=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(i,"primary"),showWhenEmpty:!0},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(i,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(i,"tertiary"),showWhenEmpty:!1}].filter(t=>t.showWhenEmpty||!!t.entity?.trim()).map(t=>{let n=t.entity?this.getState(t.entity):"n/a",r=t.unit??(t.entity?this.getUnit(t.entity):"");return{label:t.label?.trim()||t.defaultLabel,value:n,numericValue:t.entity?this.parseNumber(t.entity):Number.NaN,unit:r}})}getBatteryLevel(e){let i=e.find(a=>a.unit==="%"||/soc|state of charge|akku|charge|level/i.test(a.label));if(!(!i||Number.isNaN(i.numericValue)))return this.clampMeterPercent(i.numericValue)}getSummaryUnit(e){for(let i of e){let a=i.unit?.trim()||this.getUnit(i.entity);if(a)return a}return""}renderSummary(e){let a=[{role:"pv",label:"Generation",className:"pv"},{role:"house",label:"Load",className:"house"},{role:"battery",label:"Battery",className:"battery"},{role:"grid",label:"Grid",className:"grid"}].map(t=>{let n=e.filter(l=>this.getNodeRole(l)===t.role&&l.entity?.trim());if(n.length===0)return"";let r=n.reduce((l,d)=>l+this.parseNumber(d.entity),0),o=this.getSummaryUnit(n),s=this.formatMetricValue(r.toFixed(Math.abs(r)>=100?0:1),o);return`
+var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:"Heute",size:168,x:20,y:20},{id:"battery",name:"Battery",role:"battery",entityLabel:"Laden / Entladen",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Heute",size:168,x:80,y:20},{id:"house",name:"Haus",role:"house",entityLabel:"Verbrauch",secondaryLabel:"Heute",size:168,x:20,y:80},{id:"grid",name:"Netz",role:"grid",entityLabel:"Bezug / Einspeisung",secondaryLabel:"Heute",size:168,x:80,y:80}],x=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],y=class E extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:v,links:x}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){return 5}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}clampNodeSize(e){return Number.isNaN(e)?168:Math.max(40,Math.min(320,e))}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}getUnit(e){let a=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}parseNumber(e){let i=this.getState(e),a=Number.parseFloat(i);return Number.isFinite(a)?a:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Batterie";case"house":return"Haus";case"grid":return"Netz";default:return"Knoten"}}defaultMetricLabel(e,i){if(i==="primary")switch(e){case"pv":return"Leistung";case"battery":return"Laden / Entladen";case"house":return"Verbrauch";case"grid":return"Bezug / Einspeisung";default:return"Wert"}if(i==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":return"Heute";default:return"Detail"}return e==="battery"?"Heute":"Extra"}formatMetricValue(e,i){let a=e.trim(),t=i.trim();return t?`${a} ${t}`:a}getNodeMetrics(e){let i=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(i,"primary"),showWhenEmpty:!0},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(i,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(i,"tertiary"),showWhenEmpty:!1}].filter(t=>t.showWhenEmpty||!!t.entity?.trim()).map(t=>{let n=t.entity?this.getState(t.entity):"n/a",r=t.unit??(t.entity?this.getUnit(t.entity):"");return{label:t.label?.trim()||t.defaultLabel,value:n,numericValue:t.entity?this.parseNumber(t.entity):Number.NaN,unit:r}})}getBatteryLevel(e){let i=e.find(a=>a.unit==="%"||/soc|state of charge|akku|charge|level/i.test(a.label));if(!(!i||Number.isNaN(i.numericValue)))return this.clampMeterPercent(i.numericValue)}getSummaryUnit(e){for(let i of e){let a=i.unit?.trim()||this.getUnit(i.entity);if(a)return a}return""}renderSummary(e){let a=[{role:"pv",label:"Erzeugung",className:"pv"},{role:"house",label:"Verbrauch",className:"house"},{role:"battery",label:"Batterie",className:"battery"},{role:"grid",label:"Netz",className:"grid"}].map(t=>{let n=e.filter(l=>this.getNodeRole(l)===t.role&&l.entity?.trim());if(n.length===0)return"";let r=n.reduce((l,d)=>l+this.parseNumber(d.entity),0),o=this.getSummaryUnit(n),s=this.formatMetricValue(r.toFixed(Math.abs(r)>=100?0:1),o);return`
           <div class="summary-chip ${t.className}">
             <span>${this.safeText(t.label)}</span>
             <strong>${this.safeText(s)}</strong>
@@ -27,7 +27,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
         </div>
         ${u?`<div class="node-stats">${u}</div>`:""}
       </article>
-    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}getLinkValue(e){if(!e.valueEntity?.trim())return"";let i=this.getState(e.valueEntity),a=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(i,a)}resolveLinkDirection(e){if(!e.entity)return"idle";let i=this.parseNumber(e.entity);return e.invert&&(i=-i),i>0?"forward":i<0?"reverse":"idle"}renderLinks(e,i){let a=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${i.map(n=>{let r=a.get(n.from),o=a.get(n.to);if(!r||!o)return"";let s=(r.x+o.x)/2,l=(r.y+o.y)/2,d=o.x-r.x,p=o.y-r.y,u=Math.hypot(d,p)||1,m=-p/u,c=d/u,g=n.labelPosition??"top",f=n.valuePosition??"bottom",h=n.label?.trim()??"",b=this.getLinkValue(n),k=h&&b&&g===f?1.8:0,N=h&&b&&g===f?-1.8:0,$=this.getLineAnnotationOffset(g)+k,E=this.getLineAnnotationOffset(f)+N,C=s+m*$,T=l+c*$,M=s+m*E,S=l+c*E,F=this.resolveLinkDirection(n),_=h?`<title>${this.safeText(h)}</title>`:"",z=h?`<text class="flow-annotation flow-annotation-label" x="${C}" y="${T}" text-anchor="middle" dominant-baseline="middle">${this.safeText(h)}</text>`:"",P=b?`<text class="flow-annotation flow-annotation-value" x="${M}" y="${S}" text-anchor="middle" dominant-baseline="middle">${this.safeText(b)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${F}" x1="${r.x}" y1="${r.y}" x2="${o.x}" y2="${o.y}">${_}</line>${z}${P}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.normalizeConfig(this._config??L.getStubConfig());e.innerHTML=`
+    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}getLinkValue(e){if(!e.valueEntity?.trim())return"";let i=this.getState(e.valueEntity),a=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(i,a)}resolveLinkDirection(e){if(!e.entity)return"idle";let i=this.parseNumber(e.entity);return e.invert&&(i=-i),i>0?"forward":i<0?"reverse":"idle"}renderLinks(e,i){let a=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${i.map(n=>{let r=a.get(n.from),o=a.get(n.to);if(!r||!o)return"";let s=(r.x+o.x)/2,l=(r.y+o.y)/2,d=o.x-r.x,p=o.y-r.y,u=Math.hypot(d,p)||1,m=-p/u,c=d/u,g=n.labelPosition??"top",f=n.valuePosition??"bottom",h=n.label?.trim()??"",b=this.getLinkValue(n),N=h&&b&&g===f?1.8:0,k=h&&b&&g===f?-1.8:0,L=this.getLineAnnotationOffset(g)+N,$=this.getLineAnnotationOffset(f)+k,C=s+m*L,T=l+c*L,M=s+m*$,S=l+c*$,z=this.resolveLinkDirection(n),F=h?`<title>${this.safeText(h)}</title>`:"",_=h?`<text class="flow-annotation flow-annotation-label" x="${C}" y="${T}" text-anchor="middle" dominant-baseline="middle">${this.safeText(h)}</text>`:"",P=b?`<text class="flow-annotation flow-annotation-value" x="${M}" y="${S}" text-anchor="middle" dominant-baseline="middle">${this.safeText(b)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${z}" x1="${r.x}" y1="${r.y}" x2="${o.x}" y2="${o.y}">${F}</line>${_}${P}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.normalizeConfig(this._config??E.getStubConfig());e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -103,7 +103,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
 
         .flow-wrap {
           position: relative;
-          min-height: 340px;
+          min-height: 220px;
           aspect-ratio: 4 / 3;
           border-radius: 14px;
           background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 45%);
@@ -161,6 +161,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
 
         .node {
           width: var(--node-size);
+          height: var(--node-size);
           max-width: none;
           position: absolute;
           transform: translate(-50%, -50%);
@@ -169,9 +170,11 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
         }
 
         .node-orb {
-          min-height: 168px;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
           aspect-ratio: 1 / 1;
-          padding: 12px 12px 10px;
+          padding: 0;
           display: grid;
           align-content: start;
           justify-items: center;
@@ -198,10 +201,17 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
           position: relative;
           z-index: 1;
           width: 100%;
+          height: 100%;
           display: grid;
           align-content: start;
           justify-items: center;
           gap: 4px;
+          padding: 10px 10px 8px;
+          box-sizing: border-box;
+        }
+
+        .node-orb.has-image {
+          background: transparent;
         }
 
         .node-media {
@@ -315,16 +325,13 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
 
         @media (max-width: 640px) {
           .flow-wrap {
-            min-height: 420px;
+            min-height: 260px;
             aspect-ratio: 1 / 1;
           }
 
           .node {
-            width: min(58vw, 176px);
-          }
-
-          .node-orb {
-            min-height: 176px;
+            width: min(58vw, var(--node-size));
+            height: min(58vw, var(--node-size));
           }
         }
       </style>
@@ -353,7 +360,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
           ${m}
         </select>
       </div>
-    `}renderLayoutCanvas(e,i){let a=new Map(e.map(r=>[r.id,r])),t=i.map(r=>{let o=a.get(r.from),s=a.get(r.to);return!o||!s?"":`<line x1="${o.x}" y1="${o.y}" x2="${s.x}" y2="${s.y}"></line>`}).join(""),n=e.map((r,o)=>{let s=r.image?.trim(),l=s?`<img src="${this.safeText(s)}" alt="${this.safeText(r.name)}" />`:`<span>${this.safeText(r.name.slice(0,1).toUpperCase())}</span>`,d=Math.max(66,Math.min(128,Math.round((r.size??168)*.55)));return`
+    `}renderLayoutCanvas(e,i){let a=new Map(e.map(r=>[r.id,r])),t=i.map(r=>{let o=a.get(r.from),s=a.get(r.to);return!o||!s?"":`<line x1="${o.x}" y1="${o.y}" x2="${s.x}" y2="${s.y}"></line>`}).join(""),n=e.map((r,o)=>{let s=r.image?.trim(),l=s?`<img src="${this.safeText(s)}" alt="${this.safeText(r.name)}" />`:`<span>${this.safeText(r.name.slice(0,1).toUpperCase())}</span>`,d=Math.max(24,Math.min(148,Math.round((r.size??168)*.55)));return`
           <button
             class="layout-node"
             data-action="drag-node"
@@ -408,7 +415,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Power",secondaryLabel:"To
               </label>
               <label>
                 <span>Size (px)</span>
-                <input data-field="size" type="number" min="100" max="260" value="${Math.round(a.size??168)}" />
+                <input data-field="size" type="number" min="40" max="320" value="${Math.round(a.size??168)}" />
               </label>
             </div>
             <div class="image-tools">
