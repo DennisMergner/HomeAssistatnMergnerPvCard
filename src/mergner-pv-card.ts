@@ -1568,7 +1568,6 @@ class MergnerPvCardEditor extends HTMLElement {
             <div class="card-head">
               <button class="collapse-toggle" data-action="toggle-section" data-section="${sectionKey}" type="button">${isCollapsed ? "▶" : "▼"}</button>
               <strong>${this.safeText(node.name || node.id)}</strong>
-              <button data-action="remove-node" type="button">Remove</button>
             </div>
             ${isCollapsed ? "" : `
             <div class="node-grid">
@@ -1666,6 +1665,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </section>
             </div>
             `}
+            <button data-action="remove-node" type="button" class="remove-button">Remove Device</button>
           </section>
         `;
         }
@@ -1690,7 +1690,6 @@ class MergnerPvCardEditor extends HTMLElement {
             <div class="card-head">
               <button class="collapse-toggle" data-action="toggle-section" data-section="${sectionKey}" type="button">${isCollapsed ? "▶" : "▼"}</button>
               <strong>${this.safeText(fromNodeName)} → ${this.safeText(toNodeName)}</strong>
-              <button data-action="remove-link" type="button">Remove flow</button>
             </div>
             ${isCollapsed ? "" : `
             <p class="link-hint">Configure source/target first. Use either a single signed sensor or separate forward/reverse sensors for bidirectional flows.</p>
@@ -1755,6 +1754,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
             </div>
             `}
+            <button data-action="remove-link" type="button" class="remove-button">Remove Flow</button>
           </section>
         `;
         }
@@ -2179,15 +2179,34 @@ class MergnerPvCardEditor extends HTMLElement {
           border-radius: 14px;
           border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
           background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
+          grid-template-columns: 1fr;
         }
 
         .node-card.collapsed {
-          gap: 0;
+          gap: 8px;
           padding: 8px 12px;
         }
 
-        .node-card.collapsed > :not(.card-head) {
+        .node-card.collapsed > :not(.card-head):not(.remove-button) {
           display: none;
+        }
+
+        .remove-button {
+          align-self: end;
+          background: rgba(220, 53, 69, 0.1);
+          border: 1px solid rgba(220, 53, 69, 0.5);
+          color: #dc3545;
+          border-radius: 6px;
+          padding: 8px 12px;
+          cursor: pointer;
+          font-size: 0.85rem;
+          font-weight: 500;
+          transition: all 0.2s ease;
+        }
+
+        .remove-button:hover {
+          background: rgba(220, 53, 69, 0.2);
+          border-color: #dc3545;
         }
 
         .card-head {
@@ -2320,14 +2339,16 @@ class MergnerPvCardEditor extends HTMLElement {
           border-radius: 14px;
           border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
           background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
+          display: grid;
+          grid-template-columns: 1fr;
         }
 
         .link-card.collapsed {
-          gap: 0;
+          gap: 8px;
           padding: 8px 12px;
         }
 
-        .link-card.collapsed > :not(.card-head) {
+        .link-card.collapsed > :not(.card-head):not(.remove-button) {
           display: none;
         }
 

@@ -27,7 +27,7 @@ var N="0.0.33",w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
         </div>
         ${p?`<div class="node-stats">${p}</div>`:""}
       </article>
-    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}toWatts(e,a){let i=a.trim().toLowerCase();return Number.isFinite(e)?i==="kw"?e*1e3:i==="mw"?e*1e6:e:0}getEntityPowerWatts(e){if(!e?.trim())return 0;let a=Math.abs(this.parseNumber(e));return this.toWatts(a,this.getUnit(e))}getSignedFlowPowerWatts(e){if(!!(e.forwardEntity?.trim()||e.reverseEntity?.trim())){let o=this.getEntityPowerWatts(e.forwardEntity),r=this.getEntityPowerWatts(e.reverseEntity),n=0;return(o>0||r>0)&&(o>=r?n=o:n=-r),e.invert?-n:n}if(!e.entity?.trim())return 0;let i=this.parseNumber(e.entity),t=this.toWatts(i,this.getUnit(e.entity));return e.invert?-t:t}getLinkValue(e){if(e.valueEntity?.trim()){let t=this.getState(e.valueEntity),o=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(t,o)}let a=this.getSignedFlowPowerWatts(e);if(a===0)return"";let i=a>0?e.forwardEntity?.trim()||"":e.reverseEntity?.trim()||"";if(i){let t=this.getState(i),o=e.valueUnit??this.getUnit(i);return this.formatMetricValue(t,o)}if(e.entity?.trim()){let t=this.getState(e.entity),o=e.valueUnit??this.getUnit(e.entity);return this.formatMetricValue(t,o)}return""}resolveLinkDirection(e){let a=this.getSignedFlowPowerWatts(e);return a>0?"forward":a<0?"reverse":"idle"}getLinkDirectionalLabel(e,a){return a==="forward"&&e.forwardLabel?.trim()?e.forwardLabel.trim():a==="reverse"&&e.reverseLabel?.trim()?e.reverseLabel.trim():e.label?.trim()??""}getLinkPowerWatts(e){let a=Math.abs(this.getSignedFlowPowerWatts(e));return Number.isFinite(a)?a:0}getFlowStrokeWidth(e,a,i){return a==="idle"?Math.max(.35,.56*i):(.56+Math.min(1,Math.sqrt(e/7e3))*.98)*i}getFlowDashLength(e,a){return a==="idle"?2.8:2.8+Math.min(1,Math.log10(e+1)/4)*2.2}getFlowDurationSeconds(e,a){return a==="idle"?2.6:2.2-Math.min(1,Math.log10(e+1)/4)*1.65}renderLinks(e,a,i){let t=new Map(e.map(r=>[r.id,r]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${a.map(r=>{let n=t.get(r.from),s=t.get(r.to);if(!n||!s)return"";let l=(n.x+s.x)/2,d=(n.y+s.y)/2,c=s.x-n.x,p=s.y-n.y,g=Math.hypot(c,p)||1,m=-p/g,h=c/g,f=r.labelPosition??"top",C=r.valuePosition??"bottom",b=this.resolveLinkDirection(r),y=this.getLinkDirectionalLabel(r,b),x=this.getLinkValue(r),M=y&&x&&f===C?1.8:0,T=y&&x&&f===C?-1.8:0,k=this.getLineAnnotationOffset(f)+M,z=this.getLineAnnotationOffset(C)+T,_=l+m*k,P=d+h*k,R=l+m*z,H=d+h*z,S=this.getLinkPowerWatts(r),A=this.getFlowStrokeWidth(S,b,i.baseThickness),F=this.getFlowDashLength(S,b),U=Math.max(2.2,F*.85),j=this.getFlowDurationSeconds(S,b),V=`--flow-stroke:${A.toFixed(2)}; --flow-dash:${F.toFixed(2)}; --flow-gap:${U.toFixed(2)}; --flow-duration:${j.toFixed(2)}s;`,D=y?`<title>${this.safeText(y)}</title>`:"",O=y?`<text class="flow-annotation flow-annotation-label" x="${_}" y="${P}" text-anchor="middle" dominant-baseline="middle">${this.safeText(y)}</text>`:"",B=x?`<text class="flow-annotation flow-annotation-value" x="${R}" y="${H}" text-anchor="middle" dominant-baseline="middle">${this.safeText(x)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${b}" style="${V}" x1="${n.x}" y1="${n.y}" x2="${s.x}" y2="${s.y}">${D}</line>${O}${B}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let a=this.normalizeConfig(this._config??L.getStubConfig()),i=this.fitNodesToCard(a.nodes);e.innerHTML=`
+    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}toWatts(e,a){let i=a.trim().toLowerCase();return Number.isFinite(e)?i==="kw"?e*1e3:i==="mw"?e*1e6:e:0}getEntityPowerWatts(e){if(!e?.trim())return 0;let a=Math.abs(this.parseNumber(e));return this.toWatts(a,this.getUnit(e))}getSignedFlowPowerWatts(e){if(!!(e.forwardEntity?.trim()||e.reverseEntity?.trim())){let o=this.getEntityPowerWatts(e.forwardEntity),r=this.getEntityPowerWatts(e.reverseEntity),n=0;return(o>0||r>0)&&(o>=r?n=o:n=-r),e.invert?-n:n}if(!e.entity?.trim())return 0;let i=this.parseNumber(e.entity),t=this.toWatts(i,this.getUnit(e.entity));return e.invert?-t:t}getLinkValue(e){if(e.valueEntity?.trim()){let t=this.getState(e.valueEntity),o=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(t,o)}let a=this.getSignedFlowPowerWatts(e);if(a===0)return"";let i=a>0?e.forwardEntity?.trim()||"":e.reverseEntity?.trim()||"";if(i){let t=this.getState(i),o=e.valueUnit??this.getUnit(i);return this.formatMetricValue(t,o)}if(e.entity?.trim()){let t=this.getState(e.entity),o=e.valueUnit??this.getUnit(e.entity);return this.formatMetricValue(t,o)}return""}resolveLinkDirection(e){let a=this.getSignedFlowPowerWatts(e);return a>0?"forward":a<0?"reverse":"idle"}getLinkDirectionalLabel(e,a){return a==="forward"&&e.forwardLabel?.trim()?e.forwardLabel.trim():a==="reverse"&&e.reverseLabel?.trim()?e.reverseLabel.trim():e.label?.trim()??""}getLinkPowerWatts(e){let a=Math.abs(this.getSignedFlowPowerWatts(e));return Number.isFinite(a)?a:0}getFlowStrokeWidth(e,a,i){return a==="idle"?Math.max(.35,.56*i):(.56+Math.min(1,Math.sqrt(e/7e3))*.98)*i}getFlowDashLength(e,a){return a==="idle"?2.8:2.8+Math.min(1,Math.log10(e+1)/4)*2.2}getFlowDurationSeconds(e,a){return a==="idle"?2.6:2.2-Math.min(1,Math.log10(e+1)/4)*1.65}renderLinks(e,a,i){let t=new Map(e.map(r=>[r.id,r]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${a.map(r=>{let n=t.get(r.from),s=t.get(r.to);if(!n||!s)return"";let l=(n.x+s.x)/2,d=(n.y+s.y)/2,c=s.x-n.x,p=s.y-n.y,g=Math.hypot(c,p)||1,m=-p/g,h=c/g,f=r.labelPosition??"top",C=r.valuePosition??"bottom",y=this.resolveLinkDirection(r),b=this.getLinkDirectionalLabel(r,y),x=this.getLinkValue(r),M=b&&x&&f===C?1.8:0,T=b&&x&&f===C?-1.8:0,k=this.getLineAnnotationOffset(f)+M,z=this.getLineAnnotationOffset(C)+T,_=l+m*k,P=d+h*k,R=l+m*z,H=d+h*z,S=this.getLinkPowerWatts(r),A=this.getFlowStrokeWidth(S,y,i.baseThickness),F=this.getFlowDashLength(S,y),U=Math.max(2.2,F*.85),j=this.getFlowDurationSeconds(S,y),V=`--flow-stroke:${A.toFixed(2)}; --flow-dash:${F.toFixed(2)}; --flow-gap:${U.toFixed(2)}; --flow-duration:${j.toFixed(2)}s;`,D=b?`<title>${this.safeText(b)}</title>`:"",O=b?`<text class="flow-annotation flow-annotation-label" x="${_}" y="${P}" text-anchor="middle" dominant-baseline="middle">${this.safeText(b)}</text>`:"",B=x?`<text class="flow-annotation flow-annotation-value" x="${R}" y="${H}" text-anchor="middle" dominant-baseline="middle">${this.safeText(x)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${y}" style="${V}" x1="${n.x}" y1="${n.y}" x2="${s.x}" y2="${s.y}">${D}</line>${O}${B}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let a=this.normalizeConfig(this._config??L.getStubConfig()),i=this.fitNodesToCard(a.nodes);e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -448,7 +448,6 @@ var N="0.0.33",w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
             <div class="card-head">
               <button class="collapse-toggle" data-action="toggle-section" data-section="${o}" type="button">${r?"\u25B6":"\u25BC"}</button>
               <strong>${this.safeText(i.name||i.id)}</strong>
-              <button data-action="remove-node" type="button">Remove</button>
             </div>
             ${r?"":`
             <div class="node-grid">
@@ -541,13 +540,13 @@ var N="0.0.33",w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
               </section>
             </div>
             `}
+            <button data-action="remove-node" type="button" class="remove-button">Remove Device</button>
           </section>
         `}).join("")}renderLinkRows(e,a){let i=a.map(t=>`<option value="${this.safeText(t.id)}">${this.safeText(t.name)} (${this.safeText(t.id)})</option>`).join("");return e.map((t,o)=>{let r=`link-${o}`,n=this._collapsedSections.has(r),s=a.find(d=>d.id===t.from)?.name||t.from,l=a.find(d=>d.id===t.to)?.name||t.to;return`
           <section class="row link-card ${n?"collapsed":""}" data-kind="link" data-index="${o}">
             <div class="card-head">
               <button class="collapse-toggle" data-action="toggle-section" data-section="${r}" type="button">${n?"\u25B6":"\u25BC"}</button>
               <strong>${this.safeText(s)} \u2192 ${this.safeText(l)}</strong>
-              <button data-action="remove-link" type="button">Remove flow</button>
             </div>
             ${n?"":`
             <p class="link-hint">Configure source/target first. Use either a single signed sensor or separate forward/reverse sensors for bidirectional flows.</p>
@@ -612,6 +611,7 @@ var N="0.0.33",w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
               </label>
             </div>
             `}
+            <button data-action="remove-link" type="button" class="remove-button">Remove Flow</button>
           </section>
         `}).join("")}wireEvents(e,a){let i=this.shadowRoot;i&&(i.querySelectorAll("button[data-action='toggle-section']").forEach(t=>{t.addEventListener("click",()=>{let o=t.dataset.section;o&&(this._collapsedSections.has(o)?this._collapsedSections.delete(o):this._collapsedSections.add(o),this.render())})}),i.querySelectorAll("input[data-action='entity-search']").forEach(t=>{t.addEventListener("input",()=>{let o=t.dataset.target;if(!o)return;let r=i.querySelector(`select[data-entity-select-id='${o}']`);if(!r)return;let n=t.value.trim().toLowerCase();r.querySelectorAll("option").forEach(s=>{if(!s.value){s.hidden=!1;return}let l=(s.textContent??"").toLowerCase(),d=s.value.toLowerCase(),c=s.selected;s.hidden=n.length>0&&!c&&!l.includes(n)&&!d.includes(n)})})}),i.querySelectorAll("input[data-action='layout-zoom']").forEach(t=>{t.addEventListener("input",()=>{let o=Number(t.value);Number.isFinite(o)&&(this._layoutZoomMode="manual",this._layoutZoom=Math.max(50,Math.min(160,o)),this.render())})}),i.querySelector("select[data-action='layout-zoom-mode']")?.addEventListener("change",t=>{let o=t.currentTarget;(o.value==="auto"||o.value==="manual")&&(this._layoutZoomMode=o.value,this.render())}),i.querySelectorAll("input[data-action='flow-style']").forEach(t=>{let o=t.type==="range"?"input":"change";t.addEventListener(o,()=>{let r=t.dataset.field;if(!r)return;let s={...this.normalizeEditorFlowStyle(this.safeConfig.flowStyle)};if(t.dataset.kind==="color"){let l=r;s[l]=t.value}else{let l=r;s[l]=Number(t.value)}this.emitConfig({...this.safeConfig,flowStyle:this.normalizeEditorFlowStyle(s),nodes:e,links:a})})}),i.querySelectorAll(".node-card[data-kind='node']").forEach((t,o)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{r.addEventListener("change",()=>{let n=r.dataset.field,s=r instanceof HTMLInputElement&&r.type==="number"?Number(r.value):r.value;this.updateNode(e,a,o,{[n]:s})})}),t.querySelector("input[data-action='upload-image']")?.addEventListener("change",async r=>{let n=r.currentTarget,s=n.files?.[0];if(s)try{let l=await this.readFileAsDataUrl(s);this.updateNode(e,a,o,{image:l})}catch(l){console.error(l)}finally{n.value=""}}),t.querySelector("button[data-action='clear-image']")?.addEventListener("click",()=>{this.updateNode(e,a,o,{image:""})}),t.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let r=e.filter((l,d)=>d!==o),n=new Set(r.map(l=>l.id)),s=a.filter(l=>n.has(l.from)&&n.has(l.to));this.emitConfig({...this.safeConfig,nodes:r,links:s})})}),i.querySelectorAll("button[data-action='drag-node']").forEach(t=>{t.addEventListener("pointerdown",o=>{if(o.button!==0)return;let r=Number(t.dataset.index);Number.isFinite(r)&&(o.preventDefault(),this.startNodeDrag(r))})}),i.querySelectorAll(".row[data-kind='link']").forEach((t,o)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{if(r instanceof HTMLInputElement&&r.type==="checkbox"){r.addEventListener("change",()=>{let n=[...a];n[o]={...n[o],invert:r.checked},this.emitConfig({...this.safeConfig,nodes:e,links:n})});return}r.addEventListener("change",()=>{let n=r.dataset.field,s=[...a];s[o]={...s[o],[n]:r.value},this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),t.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let r=a.filter((n,s)=>s!==o);this.emitConfig({...this.safeConfig,nodes:e,links:r})})}),i.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let t=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:t,links:a})}),i.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let t=[...a,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:t})}),i.querySelectorAll(".row[data-kind='link']").forEach((t,o)=>{let r=t.querySelectorAll("select[data-field]"),n=a[o];r[0]&&(r[0].value=n.from),r[1]&&(r[1].value=n.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let a=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:w,i=this.safeConfig.links??E;e.innerHTML=`
       <style>
@@ -805,15 +805,34 @@ var N="0.0.33",w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           border-radius: 14px;
           border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
           background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
+          grid-template-columns: 1fr;
         }
 
         .node-card.collapsed {
-          gap: 0;
+          gap: 8px;
           padding: 8px 12px;
         }
 
-        .node-card.collapsed > :not(.card-head) {
+        .node-card.collapsed > :not(.card-head):not(.remove-button) {
           display: none;
+        }
+
+        .remove-button {
+          align-self: end;
+          background: rgba(220, 53, 69, 0.1);
+          border: 1px solid rgba(220, 53, 69, 0.5);
+          color: #dc3545;
+          border-radius: 6px;
+          padding: 8px 12px;
+          cursor: pointer;
+          font-size: 0.85rem;
+          font-weight: 500;
+          transition: all 0.2s ease;
+        }
+
+        .remove-button:hover {
+          background: rgba(220, 53, 69, 0.2);
+          border-color: #dc3545;
         }
 
         .card-head {
@@ -946,14 +965,16 @@ var N="0.0.33",w=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           border-radius: 14px;
           border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
           background: color-mix(in srgb, var(--card-background-color, #1c1c1c) 82%, transparent);
+          display: grid;
+          grid-template-columns: 1fr;
         }
 
         .link-card.collapsed {
-          gap: 0;
+          gap: 8px;
           padding: 8px 12px;
         }
 
-        .link-card.collapsed > :not(.card-head) {
+        .link-card.collapsed > :not(.card-head):not(.remove-button) {
           display: none;
         }
 
