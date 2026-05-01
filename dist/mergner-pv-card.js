@@ -867,27 +867,33 @@ var MergnerPvCardEditor = class extends HTMLElement {
   }
   renderLayoutCanvas(nodes, links) {
     const lookup = new Map(nodes.map((node) => [node.id, node]));
+    const effectiveZoom = this.getEffectiveLayoutZoom(nodes);
     const lines = links.map((link) => {
       const from = lookup.get(link.from);
       const to = lookup.get(link.to);
       if (!from || !to) {
         return "";
       }
-      return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`;
+      const x1 = this.projectLayoutPosition(from.x, effectiveZoom);
+      const y1 = this.projectLayoutPosition(from.y, effectiveZoom);
+      const x2 = this.projectLayoutPosition(to.x, effectiveZoom);
+      const y2 = this.projectLayoutPosition(to.y, effectiveZoom);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`;
     }).join("");
-    const effectiveZoom = this.getEffectiveLayoutZoom(nodes);
     const nodeMarkup = nodes.map((node, index) => {
       const image = node.image?.trim();
       const media = image ? `<img src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
       const zoomFactor = effectiveZoom / 100;
       const layoutSize = Math.max(24, Math.min(220, Math.round((node.size ?? 120) * zoomFactor)));
+      const projectedX = this.projectLayoutPosition(node.x, effectiveZoom);
+      const projectedY = this.projectLayoutPosition(node.y, effectiveZoom);
       return `
           <button
             class="layout-node"
             data-action="drag-node"
             data-index="${index}"
             type="button"
-            style="--layout-node-size:${layoutSize}px; left:${node.x}%; top:${node.y}%;"
+            style="--layout-node-size:${layoutSize}px; left:${projectedX}%; top:${projectedY}%;"
             aria-label="Drag ${this.safeText(node.name)}"
           >
             <div class="layout-node-media">${media}</div>
@@ -911,7 +917,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
           </label>
           <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${effectiveZoom}" ${this._layoutZoomMode === "auto" ? "disabled" : ""} />
         </div>
-        <div class="layout-hint">Drag devices in the preview to set X/Y positions.</div>
+        <div class="layout-hint">Drag devices in the preview to set X/Y positions. Zoom scales both size and spacing.</div>
         <div class="layout-canvas">
           <svg class="layout-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>
           ${nodeMarkup}
@@ -932,6 +938,19 @@ var MergnerPvCardEditor = class extends HTMLElement {
     const autoZoom = Math.round(targetNodePx / maxNodeSize * 100 * densityFactor);
     return Math.max(50, Math.min(160, autoZoom));
   }
+  projectLayoutPosition(value, zoom) {
+    const factor = zoom / 100;
+    const projected = 50 + (value - 50) * factor;
+    return Math.max(0, Math.min(100, projected));
+  }
+  unprojectLayoutPosition(value, zoom) {
+    const factor = zoom / 100;
+    if (factor <= 0) {
+      return value;
+    }
+    const unprojected = 50 + (value - 50) / factor;
+    return this.clampEditorPercent(unprojected);
+  }
   handlePointerMove = (event) => {
     if (this._dragNodeIndex === void 0) {
       return;
@@ -947,8 +966,11 @@ var MergnerPvCardEditor = class extends HTMLElement {
     }
     const nodes = this.safeConfig.nodes && this.safeConfig.nodes.length > 0 ? this.safeConfig.nodes : DEFAULT_NODES;
     const links = this.safeConfig.links ?? DEFAULT_LINKS;
-    const x = Math.max(4, Math.min(96, (event.clientX - rect.left) / rect.width * 100));
-    const y = Math.max(4, Math.min(96, (event.clientY - rect.top) / rect.height * 100));
+    const effectiveZoom = this.getEffectiveLayoutZoom(nodes);
+    const xInCanvas = Math.max(4, Math.min(96, (event.clientX - rect.left) / rect.width * 100));
+    const yInCanvas = Math.max(4, Math.min(96, (event.clientY - rect.top) / rect.height * 100));
+    const x = this.unprojectLayoutPosition(xInCanvas, effectiveZoom);
+    const y = this.unprojectLayoutPosition(yInCanvas, effectiveZoom);
     this.updateNode(nodes, links, this._dragNodeIndex, { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) });
   };
   handlePointerUp = () => {
