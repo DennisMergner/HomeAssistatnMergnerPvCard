@@ -70,6 +70,9 @@ type FlowStyleConfig = {
   baseThickness?: number;
   textSize?: number;
   textOutline?: number;
+  linePattern?: "dashed" | "orb";
+  speedCurve?: "linear" | "log";
+  maxAnimatedWatts?: number;
 };
 
 type CardConfig = LegacyConfig & {
@@ -99,6 +102,9 @@ type ResolvedFlowStyle = {
   baseThickness: number;
   textSize: number;
   textOutline: number;
+  linePattern: "dashed" | "orb";
+  speedCurve: "linear" | "log";
+  maxAnimatedWatts: number;
 };
 
 type NormalizedCardConfig = {
@@ -142,7 +148,10 @@ const DEFAULT_FLOW_STYLE: ResolvedFlowStyle = {
   textColor: "#d8fff6",
   baseThickness: 0.78,
   textSize: 1.7,
-  textOutline: 0.28
+  textOutline: 0.28,
+  linePattern: "dashed",
+  speedCurve: "linear",
+  maxAnimatedWatts: 12000
 };
 
 class MergnerPvCard extends HTMLElement {
@@ -229,7 +238,10 @@ class MergnerPvCard extends HTMLElement {
       textColor: this.sanitizeHexColor(source.textColor, DEFAULT_FLOW_STYLE.textColor),
       baseThickness: Math.max(0.4, Math.min(1.6, Number(source.baseThickness ?? DEFAULT_FLOW_STYLE.baseThickness))),
       textSize: Math.max(1.1, Math.min(3.3, Number(source.textSize ?? DEFAULT_FLOW_STYLE.textSize))),
-      textOutline: Math.max(0, Math.min(0.8, Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline)))
+      textOutline: Math.max(0, Math.min(0.8, Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline))),
+      linePattern: source.linePattern === "orb" ? "orb" : "dashed",
+      speedCurve: source.speedCurve === "log" ? "log" : "linear",
+      maxAnimatedWatts: Math.max(1200, Math.min(30000, Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts)))
     };
   }
 
@@ -656,27 +668,49 @@ class MergnerPvCard extends HTMLElement {
     return absValue;
   }
 
-  private getFlowStrokeWidth(powerWatts: number, direction: "forward" | "reverse" | "idle", baseThickness: number): number {
+  private getFlowPowerNormalized(powerWatts: number, flowStyle: ResolvedFlowStyle): number {
+    const safePower = Math.max(0, powerWatts);
+    const maxWatts = Math.max(1, flowStyle.maxAnimatedWatts);
+    if (flowStyle.speedCurve === "log") {
+      return Math.min(1, Math.log10(safePower + 1) / Math.log10(maxWatts + 1));
+    }
+    return Math.min(1, safePower / maxWatts);
+  }
+
+  private getFlowStrokeWidth(
+    powerWatts: number,
+    direction: "forward" | "reverse" | "idle",
+    baseThickness: number,
+    flowStyle: ResolvedFlowStyle
+  ): number {
     if (direction === "idle") {
       return Math.max(0.35, 0.56 * baseThickness);
     }
-    const normalized = Math.min(1, Math.sqrt(powerWatts / 7000));
+    const normalized = this.getFlowPowerNormalized(powerWatts, flowStyle);
     return (0.56 + normalized * 0.98) * baseThickness;
   }
 
-  private getFlowDashLength(powerWatts: number, direction: "forward" | "reverse" | "idle"): number {
+  private getFlowDashLength(
+    powerWatts: number,
+    direction: "forward" | "reverse" | "idle",
+    flowStyle: ResolvedFlowStyle
+  ): number {
     if (direction === "idle") {
       return 2.8;
     }
-    const normalized = Math.min(1, Math.log10(powerWatts + 1) / 4);
+    const normalized = this.getFlowPowerNormalized(powerWatts, flowStyle);
     return 2.8 + normalized * 2.2;
   }
 
-  private getFlowDurationSeconds(powerWatts: number, direction: "forward" | "reverse" | "idle"): number {
+  private getFlowDurationSeconds(
+    powerWatts: number,
+    direction: "forward" | "reverse" | "idle",
+    flowStyle: ResolvedFlowStyle
+  ): number {
     if (direction === "idle") {
       return 2.6;
     }
-    const normalized = Math.min(1, Math.log10(powerWatts + 1) / 4);
+    const normalized = this.getFlowPowerNormalized(powerWatts, flowStyle);
     return 2.2 - normalized * 1.65;
   }
 
@@ -684,7 +718,7 @@ class MergnerPvCard extends HTMLElement {
     const lookup = new Map(nodes.map((node) => [node.id, node]));
 
     const lines = links
-      .map((link) => {
+      .map((link, idx) => {
         const from = lookup.get(link.from);
         const to = lookup.get(link.to);
         if (!from || !to) {
@@ -716,10 +750,12 @@ class MergnerPvCard extends HTMLElement {
         const valueY = midY + normalY * valueDistance;
 
         const powerWatts = this.getLinkPowerWatts(link);
-        const strokeWidth = this.getFlowStrokeWidth(powerWatts, direction, flowStyle.baseThickness);
-        const dashLength = this.getFlowDashLength(powerWatts, direction);
+        const strokeWidth = this.getFlowStrokeWidth(powerWatts, direction, flowStyle.baseThickness, flowStyle);
+        const dashLength = this.getFlowDashLength(powerWatts, direction, flowStyle);
         const dashGap = Math.max(2.2, dashLength * 0.85);
-        const durationSeconds = this.getFlowDurationSeconds(powerWatts, direction);
+        const durationSeconds = this.getFlowDurationSeconds(powerWatts, direction, flowStyle);
+        const particleRadius = Math.max(0.55, Math.min(2.4, strokeWidth * 0.9));
+        const pathId = `flow-path-${idx}`;
         const lineStyle = `--flow-stroke:${strokeWidth.toFixed(2)}; --flow-dash:${dashLength.toFixed(2)}; --flow-gap:${dashGap.toFixed(2)}; --flow-duration:${durationSeconds.toFixed(2)}s;`;
         const title = labelText ? `<title>${this.safeText(labelText)}</title>` : "";
         const labelMarkup = labelText
@@ -729,7 +765,16 @@ class MergnerPvCard extends HTMLElement {
           ? `<text class="flow-annotation flow-annotation-value" x="${valueX}" y="${valueY}" text-anchor="middle" dominant-baseline="middle">${this.safeText(valueText)}</text>`
           : "";
 
-        return `<g class="flow-edge"><line class="flow-line ${direction}" style="${lineStyle}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${labelMarkup}${valueMarkup}</g>`;
+        const particleMarkup =
+          flowStyle.linePattern === "orb" && direction !== "idle"
+            ? `<circle class="flow-particle ${direction}" r="${particleRadius.toFixed(2)}">
+                <animateMotion dur="${durationSeconds.toFixed(2)}s" repeatCount="indefinite" ${direction === "reverse" ? 'keyPoints="1;0" keyTimes="0;1" calcMode="linear"' : ""}>
+                  <mpath href="#${pathId}"></mpath>
+                </animateMotion>
+              </circle>`
+            : "";
+
+        return `<g class="flow-edge"><path id="${pathId}" class="flow-path-helper" d="M ${from.x} ${from.y} L ${to.x} ${to.y}"></path><line class="flow-line ${direction} ${flowStyle.linePattern}" style="${lineStyle}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${particleMarkup}${labelMarkup}${valueMarkup}</g>`;
       })
       .join("");
 
@@ -881,23 +926,52 @@ class MergnerPvCard extends HTMLElement {
           stroke-width: var(--flow-stroke, 0.86);
           fill: none;
           stroke-linecap: round;
+        }
+
+        .flow-line.dashed {
           stroke-dasharray: var(--flow-dash, 3.2) var(--flow-gap, 3.2);
           animation: flow var(--flow-duration, 1.5s) linear infinite;
+        }
+
+        .flow-line.orb {
+          stroke-dasharray: none;
+          animation: none;
+          opacity: 0.9;
         }
 
         .flow-line.forward {
           stroke: var(--flow-forward);
         }
 
-        .flow-line.reverse {
+        .flow-line.reverse.dashed {
           stroke: var(--flow-reverse);
           animation-direction: reverse;
+        }
+
+        .flow-line.reverse.orb {
+          stroke: var(--flow-reverse);
         }
 
         .flow-line.idle {
           stroke: var(--flow-idle);
           opacity: 0.58;
           animation-play-state: paused;
+        }
+
+        .flow-path-helper {
+          fill: none;
+          stroke: none;
+          pointer-events: none;
+        }
+
+        .flow-particle {
+          fill: var(--flow-forward);
+          filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.55));
+          pointer-events: none;
+        }
+
+        .flow-particle.reverse {
+          fill: var(--flow-reverse);
         }
 
         .flow-annotation {
@@ -1158,7 +1232,10 @@ class MergnerPvCardEditor extends HTMLElement {
       textColor: this.sanitizeEditorHexColor(source.textColor, DEFAULT_FLOW_STYLE.textColor),
       baseThickness: this.clampFlowSetting(Number(source.baseThickness ?? DEFAULT_FLOW_STYLE.baseThickness), 0.4, 1.6, DEFAULT_FLOW_STYLE.baseThickness),
       textSize: this.clampFlowSetting(Number(source.textSize ?? DEFAULT_FLOW_STYLE.textSize), 1.1, 3.3, DEFAULT_FLOW_STYLE.textSize),
-      textOutline: this.clampFlowSetting(Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline), 0, 0.8, DEFAULT_FLOW_STYLE.textOutline)
+      textOutline: this.clampFlowSetting(Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline), 0, 0.8, DEFAULT_FLOW_STYLE.textOutline),
+      linePattern: source.linePattern === "orb" ? "orb" : "dashed",
+      speedCurve: source.speedCurve === "log" ? "log" : "linear",
+      maxAnimatedWatts: this.clampFlowSetting(Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts), 1200, 30000, DEFAULT_FLOW_STYLE.maxAnimatedWatts)
     };
   }
 
@@ -1938,22 +2015,32 @@ class MergnerPvCardEditor extends HTMLElement {
       }
     });
 
-    root.querySelectorAll<HTMLInputElement>("input[data-action='flow-style']").forEach((input) => {
-      const eventName = input.type === "range" ? "input" : "change";
-      input.addEventListener(eventName, () => {
-        const field = input.dataset.field as keyof ResolvedFlowStyle | undefined;
+    root.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-action='flow-style']").forEach((control) => {
+      const eventName = control instanceof HTMLInputElement && control.type === "range" ? "input" : "change";
+      control.addEventListener(eventName, () => {
+        const field = control.dataset.field as keyof ResolvedFlowStyle | undefined;
         if (!field) {
           return;
         }
 
         const current = this.normalizeEditorFlowStyle(this.safeConfig.flowStyle);
         const next: ResolvedFlowStyle = { ...current };
-        if (input.dataset.kind === "color") {
+        if (control.dataset.kind === "color") {
           const colorField = field as "forwardColor" | "reverseColor" | "idleColor" | "textColor";
-          next[colorField] = input.value;
+          next[colorField] = control.value;
+        } else if (control.dataset.kind === "select") {
+          if (field === "linePattern") {
+            next.linePattern = control.value === "orb" ? "orb" : "dashed";
+          } else if (field === "speedCurve") {
+            next.speedCurve = control.value === "log" ? "log" : "linear";
+          }
         } else {
           const numericField = field as "baseThickness" | "textSize" | "textOutline";
-          next[numericField] = Number(input.value);
+          if (field === "maxAnimatedWatts") {
+            next.maxAnimatedWatts = Number(control.value);
+          } else {
+            next[numericField] = Number(control.value);
+          }
         }
 
         this.emitConfig({ ...this.safeConfig, flowStyle: this.normalizeEditorFlowStyle(next), nodes, links });
@@ -2796,6 +2883,25 @@ class MergnerPvCardEditor extends HTMLElement {
               <span>Line thickness</span>
               <input data-action="flow-style" data-kind="number" data-field="baseThickness" type="range" min="0.4" max="1.6" step="0.05" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).baseThickness.toFixed(2)}" />
               <input data-action="flow-style" data-kind="number" data-field="baseThickness" type="number" min="0.4" max="1.6" step="0.05" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).baseThickness.toFixed(2)}" />
+            </label>
+            <label class="flow-style-row">
+              <span>Line pattern</span>
+              <select data-action="flow-style" data-kind="select" data-field="linePattern">
+                <option value="dashed" ${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).linePattern === "dashed" ? "selected" : ""}>Dashed animated</option>
+                <option value="orb" ${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).linePattern === "orb" ? "selected" : ""}>Solid + moving orb</option>
+              </select>
+            </label>
+            <label class="flow-style-row">
+              <span>Speed curve</span>
+              <select data-action="flow-style" data-kind="select" data-field="speedCurve">
+                <option value="linear" ${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).speedCurve === "linear" ? "selected" : ""}>Linear (0 to max W)</option>
+                <option value="log" ${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).speedCurve === "log" ? "selected" : ""}>Logarithmic</option>
+              </select>
+            </label>
+            <label class="flow-style-row range">
+              <span>Max watts for full speed/thickness</span>
+              <input data-action="flow-style" data-kind="number" data-field="maxAnimatedWatts" type="range" min="1200" max="30000" step="100" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).maxAnimatedWatts.toFixed(0)}" />
+              <input data-action="flow-style" data-kind="number" data-field="maxAnimatedWatts" type="number" min="1200" max="30000" step="100" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).maxAnimatedWatts.toFixed(0)}" />
             </label>
             <label class="flow-style-row range">
               <span>Flow text size</span>
