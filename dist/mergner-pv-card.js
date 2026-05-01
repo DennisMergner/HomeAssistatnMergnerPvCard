@@ -270,12 +270,14 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         `;
     return `
       <article class="node node-${role} ${batteryStateClass}" style="left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
-        <div class="node-media">${media}</div>
-        <div class="node-kicker">${this.safeText(this.roleLabel(role))}</div>
-        <div class="node-label">${safeName}</div>
-        <div class="node-value">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>
-        <div class="node-value-label">${this.safeText(primaryMetric.label)}</div>
-        ${batteryMeter}
+        <div class="node-orb">
+          <div class="node-media">${media}</div>
+          <div class="node-kicker">${this.safeText(this.roleLabel(role))}</div>
+          <div class="node-label">${safeName}</div>
+          <div class="node-value">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>
+          <div class="node-value-label">${this.safeText(primaryMetric.label)}</div>
+          ${batteryMeter}
+        </div>
         ${extraMetricMarkup ? `<div class="node-stats">${extraMetricMarkup}</div>` : ""}
       </article>
     `;
@@ -437,31 +439,43 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         }
 
         .node {
-          width: min(42vw, 150px);
-          max-width: 150px;
-          min-height: 116px;
+          width: min(46vw, 168px);
+          max-width: 168px;
           position: absolute;
           transform: translate(-50%, -50%);
-          background: var(--pv-card-node-bg);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          border-radius: 14px;
-          padding: 8px;
           text-align: center;
-          backdrop-filter: blur(4px);
           z-index: 1;
+        }
+
+        .node-orb {
+          min-height: 168px;
+          padding: 12px 12px 10px;
+          display: grid;
+          align-content: start;
+          justify-items: center;
+          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 50%;
+          backdrop-filter: blur(6px);
+          box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.18);
         }
 
         .node-media {
           display: flex;
           justify-content: center;
           align-items: center;
-          margin-bottom: 4px;
+          width: 58px;
+          height: 58px;
+          margin-bottom: 6px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
         }
 
         .node img {
           width: 42px;
           height: 42px;
-          object-fit: contain;
+          object-fit: cover;
+          border-radius: 50%;
         }
 
         .fallback-icon {
@@ -479,6 +493,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           font-size: 0.84rem;
           font-weight: 700;
           margin-top: 2px;
+          max-width: 100px;
         }
 
         .node-kicker {
@@ -505,6 +520,11 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           display: grid;
           gap: 4px;
           text-align: left;
+          background: rgba(4, 15, 21, 0.48);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          border-radius: 12px;
+          padding: 8px 10px;
+          backdrop-filter: blur(4px);
         }
 
         .node-stat {
@@ -534,11 +554,11 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         }
 
         .node-battery.is-charging {
-          box-shadow: 0 0 0 1px rgba(116, 224, 203, 0.28), 0 0 24px rgba(116, 224, 203, 0.12);
+          filter: drop-shadow(0 0 16px rgba(116, 224, 203, 0.18));
         }
 
         .node-battery.is-discharging {
-          box-shadow: 0 0 0 1px rgba(255, 177, 102, 0.28), 0 0 24px rgba(255, 177, 102, 0.14);
+          filter: drop-shadow(0 0 16px rgba(255, 177, 102, 0.18));
         }
 
         @media (max-width: 640px) {
@@ -547,7 +567,11 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           }
 
           .node {
-            width: min(58vw, 168px);
+            width: min(58vw, 176px);
+          }
+
+          .node-orb {
+            min-height: 176px;
           }
         }
       </style>
@@ -592,6 +616,25 @@ var MergnerPvCardEditor = class extends HTMLElement {
     );
     this.render();
   }
+  updateNode(nodes, links, index, patch) {
+    const nextNodes = [...nodes];
+    nextNodes[index] = { ...nextNodes[index], ...patch };
+    this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
+  }
+  readFileAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.addEventListener("load", () => {
+        if (typeof reader.result === "string") {
+          resolve(reader.result);
+          return;
+        }
+        reject(new Error("Image upload failed"));
+      });
+      reader.addEventListener("error", () => reject(reader.error ?? new Error("Image upload failed")));
+      reader.readAsDataURL(file);
+    });
+  }
   renderNodeRows(nodes) {
     const roleOptions = ["pv", "battery", "house", "grid", "custom"];
     return nodes.map(
@@ -619,7 +662,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
                 </select>
               </label>
               <label>
-                <span>Image</span>
+                <span>Image URL</span>
                 <input data-field="image" value="${this.safeText(node.image ?? "")}" placeholder="/local/pv/battery.png" />
               </label>
               <label>
@@ -630,6 +673,16 @@ var MergnerPvCardEditor = class extends HTMLElement {
                 <span>Y</span>
                 <input data-field="y" type="number" min="0" max="100" value="${node.y}" />
               </label>
+            </div>
+            <div class="image-tools">
+              <label class="upload-field">
+                <span>Upload image</span>
+                <input data-action="upload-image" type="file" accept="image/*" />
+              </label>
+              <button data-action="clear-image" type="button">Clear image</button>
+              <div class="image-preview ${node.image?.trim() ? "has-image" : ""}">
+                ${node.image?.trim() ? `<img src="${this.safeText(node.image)}" alt="${this.safeText(node.name)} preview" />` : "<span>No image</span>"}
+              </div>
             </div>
             <div class="metric-grid">
               <label>
@@ -693,15 +746,31 @@ var MergnerPvCardEditor = class extends HTMLElement {
     if (!root) {
       return;
     }
-    root.querySelectorAll(".row[data-kind='node']").forEach((row, index) => {
-      row.querySelectorAll("input[data-field]").forEach((input) => {
+    root.querySelectorAll(".node-card[data-kind='node']").forEach((row, index) => {
+      row.querySelectorAll("input[data-field], select[data-field]").forEach((input) => {
         input.addEventListener("change", () => {
           const field = input.dataset.field;
-          const nextNodes = [...nodes];
-          const value = input.type === "number" ? Number(input.value) : input.value;
-          nextNodes[index][field] = value;
-          this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
+          const value = input instanceof HTMLInputElement && input.type === "number" ? Number(input.value) : input.value;
+          this.updateNode(nodes, links, index, { [field]: value });
         });
+      });
+      row.querySelector("input[data-action='upload-image']")?.addEventListener("change", async (event) => {
+        const target = event.currentTarget;
+        const file = target.files?.[0];
+        if (!file) {
+          return;
+        }
+        try {
+          const image = await this.readFileAsDataUrl(file);
+          this.updateNode(nodes, links, index, { image });
+        } catch (error) {
+          console.error(error);
+        } finally {
+          target.value = "";
+        }
+      });
+      row.querySelector("button[data-action='clear-image']")?.addEventListener("click", () => {
+        this.updateNode(nodes, links, index, { image: "" });
       });
       row.querySelector("button[data-action='remove-node']")?.addEventListener("click", () => {
         const nextNodes = nodes.filter((_, i) => i !== index);
@@ -821,6 +890,43 @@ var MergnerPvCardEditor = class extends HTMLElement {
           grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         }
 
+        .image-tools {
+          display: grid;
+          gap: 8px;
+          grid-template-columns: minmax(0, 1fr) auto 84px;
+          align-items: end;
+        }
+
+        .upload-field input[type='file'] {
+          background: transparent;
+          padding: 0;
+          border: 0;
+        }
+
+        .image-preview {
+          width: 84px;
+          height: 84px;
+          border-radius: 18px;
+          overflow: hidden;
+          border: 1px dashed rgba(128, 128, 128, 0.4);
+          display: grid;
+          place-items: center;
+          background: rgba(255, 255, 255, 0.05);
+          color: var(--secondary-text-color, #555);
+          font-size: 0.74rem;
+          text-align: center;
+        }
+
+        .image-preview.has-image {
+          border-style: solid;
+        }
+
+        .image-preview img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
         label {
           display: grid;
           gap: 4px;
@@ -875,6 +981,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
         }
 
         @media (max-width: 720px) {
+          .image-tools,
           .row,
           .row[data-kind='link'] {
             grid-template-columns: 1fr;
