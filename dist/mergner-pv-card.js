@@ -1,9 +1,19 @@
 // src/mergner-pv-card.ts
 var DEFAULT_NODES = [
-  { id: "solar", name: "Solar", x: 20, y: 20 },
-  { id: "battery", name: "Battery", x: 80, y: 20 },
-  { id: "house", name: "House", x: 20, y: 80 },
-  { id: "grid", name: "Grid", x: 80, y: 80 }
+  { id: "solar", name: "Solar", role: "pv", entityLabel: "Power", secondaryLabel: "Today", x: 20, y: 20 },
+  {
+    id: "battery",
+    name: "Battery",
+    role: "battery",
+    entityLabel: "Charge / Discharge",
+    secondaryLabel: "SOC",
+    secondaryUnit: "%",
+    tertiaryLabel: "Today",
+    x: 80,
+    y: 20
+  },
+  { id: "house", name: "House", role: "house", entityLabel: "Load", secondaryLabel: "Today", x: 20, y: 80 },
+  { id: "grid", name: "Grid", role: "grid", entityLabel: "Import / Export", secondaryLabel: "Today", x: 80, y: 80 }
 ];
 var DEFAULT_LINKS = [
   { from: "solar", to: "house", entity: "sensor.pv_to_house_power" },
@@ -51,6 +61,12 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     }
     return Math.max(2, Math.min(98, value));
   }
+  clampMeterPercent(value) {
+    if (Number.isNaN(value)) {
+      return 0;
+    }
+    return Math.max(0, Math.min(100, value));
+  }
   getEntity(entityId) {
     if (!entityId || !this._hass?.states?.[entityId]) {
       return void 0;
@@ -70,6 +86,138 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     const value = Number.parseFloat(raw);
     return Number.isFinite(value) ? value : 0;
   }
+  getNodeRole(node) {
+    return node.role ?? "custom";
+  }
+  roleLabel(role) {
+    switch (role) {
+      case "pv":
+        return "PV";
+      case "battery":
+        return "Battery";
+      case "house":
+        return "House";
+      case "grid":
+        return "Grid";
+      default:
+        return "Node";
+    }
+  }
+  defaultMetricLabel(role, slot) {
+    if (slot === "primary") {
+      switch (role) {
+        case "pv":
+          return "Power";
+        case "battery":
+          return "Charge / Discharge";
+        case "house":
+          return "Load";
+        case "grid":
+          return "Import / Export";
+        default:
+          return "Value";
+      }
+    }
+    if (slot === "secondary") {
+      switch (role) {
+        case "battery":
+          return "SOC";
+        case "pv":
+        case "house":
+        case "grid":
+          return "Today";
+        default:
+          return "Detail";
+      }
+    }
+    return role === "battery" ? "Today" : "Extra";
+  }
+  formatMetricValue(value, unit) {
+    const trimmedValue = value.trim();
+    const trimmedUnit = unit.trim();
+    return trimmedUnit ? `${trimmedValue} ${trimmedUnit}` : trimmedValue;
+  }
+  getNodeMetrics(node) {
+    const role = this.getNodeRole(node);
+    const slots = [
+      {
+        entity: node.entity,
+        label: node.entityLabel,
+        unit: node.unit,
+        defaultLabel: this.defaultMetricLabel(role, "primary"),
+        showWhenEmpty: true
+      },
+      {
+        entity: node.secondaryEntity,
+        label: node.secondaryLabel,
+        unit: node.secondaryUnit,
+        defaultLabel: this.defaultMetricLabel(role, "secondary"),
+        showWhenEmpty: false
+      },
+      {
+        entity: node.tertiaryEntity,
+        label: node.tertiaryLabel,
+        unit: node.tertiaryUnit,
+        defaultLabel: this.defaultMetricLabel(role, "tertiary"),
+        showWhenEmpty: false
+      }
+    ];
+    return slots.filter((slot) => slot.showWhenEmpty || Boolean(slot.entity?.trim())).map((slot) => {
+      const value = slot.entity ? this.getState(slot.entity) : "n/a";
+      const resolvedUnit = slot.unit ?? (slot.entity ? this.getUnit(slot.entity) : "");
+      return {
+        label: slot.label?.trim() || slot.defaultLabel,
+        value,
+        numericValue: slot.entity ? this.parseNumber(slot.entity) : Number.NaN,
+        unit: resolvedUnit
+      };
+    });
+  }
+  getBatteryLevel(metrics) {
+    const levelMetric = metrics.find(
+      (metric) => metric.unit === "%" || /soc|state of charge|akku|charge|level/i.test(metric.label)
+    );
+    if (!levelMetric || Number.isNaN(levelMetric.numericValue)) {
+      return void 0;
+    }
+    return this.clampMeterPercent(levelMetric.numericValue);
+  }
+  getSummaryUnit(nodes) {
+    for (const node of nodes) {
+      const unit = node.unit?.trim() || this.getUnit(node.entity);
+      if (unit) {
+        return unit;
+      }
+    }
+    return "";
+  }
+  renderSummary(nodes) {
+    const groups = [
+      { role: "pv", label: "Generation", className: "pv" },
+      { role: "house", label: "Load", className: "house" },
+      { role: "battery", label: "Battery", className: "battery" },
+      { role: "grid", label: "Grid", className: "grid" }
+    ];
+    const items = groups.map((group) => {
+      const matchingNodes = nodes.filter((node) => this.getNodeRole(node) === group.role && node.entity?.trim());
+      if (matchingNodes.length === 0) {
+        return "";
+      }
+      const total = matchingNodes.reduce((sum, node) => sum + this.parseNumber(node.entity), 0);
+      const unit = this.getSummaryUnit(matchingNodes);
+      const value = this.formatMetricValue(total.toFixed(Math.abs(total) >= 100 ? 0 : 1), unit);
+      return `
+          <div class="summary-chip ${group.className}">
+            <span>${this.safeText(group.label)}</span>
+            <strong>${this.safeText(value)}</strong>
+          </div>
+        `;
+    }).join("");
+    if (!items.trim()) {
+      return "";
+    }
+    return `<div class="summary-row">${items}</div>`;
+  }
   normalizeConfig(config) {
     const title = config.title ?? "PV Flow";
     if (config.nodes && config.nodes.length > 0) {
@@ -77,6 +225,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         ...node,
         id: node.id?.trim() || `node_${Math.random().toString(36).slice(2, 8)}`,
         name: node.name?.trim() || "Node",
+        role: node.role ?? "custom",
         x: this.clampPercent(Number(node.x)),
         y: this.clampPercent(Number(node.y))
       }));
@@ -97,16 +246,37 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     };
   }
   renderNode(node) {
-    const value = this.getState(node.entity);
-    const unit = node.unit ?? this.getUnit(node.entity);
+    const role = this.getNodeRole(node);
+    const metrics = this.getNodeMetrics(node);
+    const primaryMetric = metrics[0];
+    const extraMetrics = metrics.slice(1);
+    const batteryLevel = role === "battery" ? this.getBatteryLevel(metrics) : void 0;
     const safeName = this.safeText(node.name);
     const image = node.image?.trim();
     const media = image ? `<img src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
+    const batteryStateClass = role === "battery" && primaryMetric && !Number.isNaN(primaryMetric.numericValue) ? primaryMetric.numericValue > 0 ? "is-charging" : primaryMetric.numericValue < 0 ? "is-discharging" : "is-idle" : "";
+    const extraMetricMarkup = extraMetrics.map(
+      (metric) => `
+          <div class="node-stat">
+            <span>${this.safeText(metric.label)}</span>
+            <strong>${this.safeText(this.formatMetricValue(metric.value, metric.unit))}</strong>
+          </div>
+        `
+    ).join("");
+    const batteryMeter = batteryLevel === void 0 ? "" : `
+          <div class="battery-meter" aria-label="Battery level ${batteryLevel}%">
+            <div class="battery-meter-fill" style="width:${batteryLevel}%;"></div>
+          </div>
+        `;
     return `
-      <article class="node" style="left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
+      <article class="node node-${role} ${batteryStateClass}" style="left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
         <div class="node-media">${media}</div>
+        <div class="node-kicker">${this.safeText(this.roleLabel(role))}</div>
         <div class="node-label">${safeName}</div>
-        <div class="node-value">${this.safeText(value)} ${this.safeText(unit)}</div>
+        <div class="node-value">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>
+        <div class="node-value-label">${this.safeText(primaryMetric.label)}</div>
+        ${batteryMeter}
+        ${extraMetricMarkup ? `<div class="node-stats">${extraMetricMarkup}</div>` : ""}
       </article>
     `;
   }
@@ -179,6 +349,50 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           letter-spacing: 0.02em;
         }
 
+        .summary-row {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 8px;
+          margin-bottom: 12px;
+        }
+
+        .summary-chip {
+          background: rgba(255, 255, 255, 0.08);
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 14px;
+          padding: 8px 10px;
+          display: grid;
+          gap: 2px;
+          backdrop-filter: blur(4px);
+        }
+
+        .summary-chip span {
+          font-size: 0.7rem;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: var(--pv-card-muted);
+        }
+
+        .summary-chip strong {
+          font-size: 1rem;
+        }
+
+        .summary-chip.pv strong {
+          color: #9cf0a5;
+        }
+
+        .summary-chip.house strong {
+          color: #f5f7fa;
+        }
+
+        .summary-chip.battery strong {
+          color: #8de0ff;
+        }
+
+        .summary-chip.grid strong {
+          color: #ffc983;
+        }
+
         .flow-wrap {
           position: relative;
           min-height: 340px;
@@ -225,7 +439,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         .node {
           width: min(42vw, 150px);
           max-width: 150px;
-          min-height: 86px;
+          min-height: 116px;
           position: absolute;
           transform: translate(-50%, -50%);
           background: var(--pv-card-node-bg);
@@ -241,7 +455,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           display: flex;
           justify-content: center;
           align-items: center;
-          margin-bottom: 6px;
+          margin-bottom: 4px;
         }
 
         .node img {
@@ -262,8 +476,14 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         }
 
         .node-label {
+          font-size: 0.84rem;
+          font-weight: 700;
+          margin-top: 2px;
+        }
+
+        .node-kicker {
           color: var(--pv-card-muted);
-          font-size: 0.72rem;
+          font-size: 0.64rem;
           text-transform: uppercase;
           letter-spacing: 0.06em;
         }
@@ -274,15 +494,67 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           font-weight: 700;
         }
 
+        .node-value-label {
+          margin-top: 2px;
+          color: var(--pv-card-muted);
+          font-size: 0.67rem;
+        }
+
+        .node-stats {
+          margin-top: 8px;
+          display: grid;
+          gap: 4px;
+          text-align: left;
+        }
+
+        .node-stat {
+          display: flex;
+          justify-content: space-between;
+          gap: 8px;
+          font-size: 0.7rem;
+        }
+
+        .node-stat span {
+          color: var(--pv-card-muted);
+        }
+
+        .battery-meter {
+          width: 100%;
+          height: 6px;
+          margin-top: 8px;
+          border-radius: 999px;
+          overflow: hidden;
+          background: rgba(255, 255, 255, 0.12);
+        }
+
+        .battery-meter-fill {
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #6edb7a 0%, #9ff6b0 100%);
+        }
+
+        .node-battery.is-charging {
+          box-shadow: 0 0 0 1px rgba(116, 224, 203, 0.28), 0 0 24px rgba(116, 224, 203, 0.12);
+        }
+
+        .node-battery.is-discharging {
+          box-shadow: 0 0 0 1px rgba(255, 177, 102, 0.28), 0 0 24px rgba(255, 177, 102, 0.14);
+        }
+
         @media (max-width: 640px) {
           .flow-wrap {
-            min-height: 420px;
+            min-height: 520px;
+          }
+
+          .node {
+            width: min(58vw, 168px);
           }
         }
       </style>
 
       <ha-card>
         <div class="title">${this.safeText(normalized.title)}</div>
+        ${this.renderSummary(normalized.nodes)}
         <div class="flow-wrap">
           ${this.renderLinks(normalized.nodes, normalized.links)}
           ${normalized.nodes.map((node) => this.renderNode(node)).join("")}
@@ -293,6 +565,9 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 };
 var MergnerPvCardEditor = class extends HTMLElement {
   _config;
+  safeText(input) {
+    return input.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+  }
   setConfig(config) {
     this._config = {
       ...MergnerPvCard.getStubConfig(),
@@ -318,32 +593,100 @@ var MergnerPvCardEditor = class extends HTMLElement {
     this.render();
   }
   renderNodeRows(nodes) {
+    const roleOptions = ["pv", "battery", "house", "grid", "custom"];
     return nodes.map(
       (node, idx) => `
-          <div class="row" data-kind="node" data-index="${idx}">
-            <input data-field="id" value="${node.id}" placeholder="id" />
-            <input data-field="name" value="${node.name}" placeholder="Name" />
-            <input data-field="entity" value="${node.entity ?? ""}" placeholder="sensor.xyz" />
-            <input data-field="image" value="${node.image ?? ""}" placeholder="/local/pv/icon.png" />
-            <input data-field="x" type="number" min="0" max="100" value="${node.x}" />
-            <input data-field="y" type="number" min="0" max="100" value="${node.y}" />
-            <button data-action="remove-node">X</button>
-          </div>
+          <section class="node-card" data-kind="node" data-index="${idx}">
+            <div class="card-head">
+              <strong>Node ${idx + 1}</strong>
+              <button data-action="remove-node" type="button">Remove</button>
+            </div>
+            <div class="node-grid">
+              <label>
+                <span>ID</span>
+                <input data-field="id" value="${this.safeText(node.id)}" placeholder="battery_1" />
+              </label>
+              <label>
+                <span>Name</span>
+                <input data-field="name" value="${this.safeText(node.name)}" placeholder="Battery 1" />
+              </label>
+              <label>
+                <span>Type</span>
+                <select data-field="role">
+                  ${roleOptions.map(
+        (role) => `<option value="${role}" ${(node.role ?? "custom") === role ? "selected" : ""}>${role}</option>`
+      ).join("")}
+                </select>
+              </label>
+              <label>
+                <span>Image</span>
+                <input data-field="image" value="${this.safeText(node.image ?? "")}" placeholder="/local/pv/battery.png" />
+              </label>
+              <label>
+                <span>X</span>
+                <input data-field="x" type="number" min="0" max="100" value="${node.x}" />
+              </label>
+              <label>
+                <span>Y</span>
+                <input data-field="y" type="number" min="0" max="100" value="${node.y}" />
+              </label>
+            </div>
+            <div class="metric-grid">
+              <label>
+                <span>Primary entity</span>
+                <input data-field="entity" value="${this.safeText(node.entity ?? "")}" placeholder="sensor.battery_power" />
+              </label>
+              <label>
+                <span>Primary label</span>
+                <input data-field="entityLabel" value="${this.safeText(node.entityLabel ?? "")}" placeholder="Charge / Discharge" />
+              </label>
+              <label>
+                <span>Primary unit</span>
+                <input data-field="unit" value="${this.safeText(node.unit ?? "")}" placeholder="auto / W" />
+              </label>
+              <label>
+                <span>Secondary entity</span>
+                <input data-field="secondaryEntity" value="${this.safeText(node.secondaryEntity ?? "")}" placeholder="sensor.battery_soc" />
+              </label>
+              <label>
+                <span>Secondary label</span>
+                <input data-field="secondaryLabel" value="${this.safeText(node.secondaryLabel ?? "")}" placeholder="SOC" />
+              </label>
+              <label>
+                <span>Secondary unit</span>
+                <input data-field="secondaryUnit" value="${this.safeText(node.secondaryUnit ?? "")}" placeholder="auto / %" />
+              </label>
+              <label>
+                <span>Tertiary entity</span>
+                <input data-field="tertiaryEntity" value="${this.safeText(node.tertiaryEntity ?? "")}" placeholder="sensor.battery_today" />
+              </label>
+              <label>
+                <span>Tertiary label</span>
+                <input data-field="tertiaryLabel" value="${this.safeText(node.tertiaryLabel ?? "")}" placeholder="Today" />
+              </label>
+              <label>
+                <span>Tertiary unit</span>
+                <input data-field="tertiaryUnit" value="${this.safeText(node.tertiaryUnit ?? "")}" placeholder="auto / kWh" />
+              </label>
+            </div>
+          </section>
         `
     ).join("");
   }
   renderLinkRows(links, nodes) {
-    const options = nodes.map((node) => `<option value="${node.id}">${node.name} (${node.id})</option>`).join("");
-    return links.map((link, idx) => `
-        <div class="row" data-kind="link" data-index="${idx}">
-          <select data-field="from">${options}</select>
-          <select data-field="to">${options}</select>
-          <input data-field="entity" value="${link.entity ?? ""}" placeholder="sensor.flow_power" />
-          <input data-field="label" value="${link.label ?? ""}" placeholder="Label optional" />
-          <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
-          <button data-action="remove-link">X</button>
-        </div>
-      `).join("");
+    const options = nodes.map((node) => `<option value="${this.safeText(node.id)}">${this.safeText(node.name)} (${this.safeText(node.id)})</option>`).join("");
+    return links.map(
+      (link, idx) => `
+          <div class="row" data-kind="link" data-index="${idx}">
+            <select data-field="from">${options}</select>
+            <select data-field="to">${options}</select>
+            <input data-field="entity" value="${this.safeText(link.entity ?? "")}" placeholder="sensor.flow_power" />
+            <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
+            <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
+            <button data-action="remove-link" type="button">X</button>
+          </div>
+        `
+    ).join("");
   }
   wireEvents(nodes, links) {
     const root = this.shadowRoot;
@@ -448,11 +791,44 @@ var MergnerPvCardEditor = class extends HTMLElement {
 
         .editor {
           display: grid;
-          gap: 10px;
+          gap: 14px;
         }
 
         h4 {
           margin: 6px 0 2px;
+        }
+
+        .node-card {
+          display: grid;
+          gap: 10px;
+          padding: 12px;
+          border-radius: 14px;
+          border: 1px solid rgba(128, 128, 128, 0.3);
+          background: rgba(127, 127, 127, 0.08);
+        }
+
+        .card-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .node-grid,
+        .metric-grid {
+          display: grid;
+          gap: 8px;
+          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        label {
+          display: grid;
+          gap: 4px;
+          font-size: 0.82rem;
+        }
+
+        label span {
+          color: var(--secondary-text-color, #555);
         }
 
         .row {
@@ -476,6 +852,10 @@ var MergnerPvCardEditor = class extends HTMLElement {
           background: rgba(255, 255, 255, 0.95);
         }
 
+        button {
+          cursor: pointer;
+        }
+
         .topline {
           display: grid;
           grid-template-columns: 1fr;
@@ -493,12 +873,24 @@ var MergnerPvCardEditor = class extends HTMLElement {
           gap: 6px;
           font-size: 0.8rem;
         }
+
+        @media (max-width: 720px) {
+          .row,
+          .row[data-kind='link'] {
+            grid-template-columns: 1fr;
+          }
+
+          .card-head {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+        }
       </style>
 
       <div class="editor">
         <div class="topline">
           <label>Title</label>
-          <input id="title" value="${this.safeConfig.title ?? "PV Flow"}" placeholder="PV Flow" />
+          <input id="title" value="${this.safeText(this.safeConfig.title ?? "PV Flow")}" placeholder="PV Flow" />
         </div>
 
         <h4>Nodes</h4>

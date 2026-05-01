@@ -6,6 +6,9 @@ Custom Home Assistant Lovelace card for PV energy flow visualization with dynami
 
 - Custom card type: `custom:mergner-pv-card`
 - Dynamic nodes with free x/y positioning (in percent)
+- Multiple PV, battery and custom devices via UI editor
+- Up to three live metrics per node (for example power, SOC, daily yield)
+- Role based summary chips for generation, load, battery and grid
 - Dynamic links between nodes with animated direction (forward/reverse)
 - Optional own image per node
 - Visual Home Assistant card editor (UI based, no YAML required for normal usage)
@@ -22,7 +25,7 @@ Custom Home Assistant Lovelace card for PV energy flow visualization with dynami
 
 If resource is not added automatically, add this manual resource:
 
-- URL: `/hacsfiles/HomeAssistatnMergnerPvCard/dist/mergner-pv-card.js`
+- URL: `/hacsfiles/HomeAssistatnMergnerPvCard/mergner-pv-card.js`
 - Type: `module`
 
 ## UI Editor Usage (No YAML Workflow)
@@ -33,7 +36,9 @@ If resource is not added automatically, add this manual resource:
 4. Search/select Mergner PV Card.
 5. Configure everything in the card editor:
    - Title
-   - Nodes (id, name, entity, image, x, y)
+  - Nodes (id, name, type, image, x, y)
+  - Primary value per device, for example current power
+  - Secondary and tertiary values, for example SOC and daily energy
    - Links (from, to, optional flow entity, invert, label)
 
 Result: You can maintain this card through Home Assistant UI without manual YAML edits.
@@ -48,25 +53,42 @@ title: PV Anlage
 nodes:
   - id: solar
     name: Solar
+    role: pv
     entity: sensor.pv_power
+    entityLabel: Power
+    secondaryEntity: sensor.pv_today
+    secondaryLabel: Today
     image: /local/pv/solar.png
     x: 20
     y: 20
   - id: battery
     name: Battery
+    role: battery
     entity: sensor.battery_power
+    entityLabel: Charge / Discharge
+    secondaryEntity: sensor.battery_soc
+    secondaryLabel: SOC
+    secondaryUnit: "%"
+    tertiaryEntity: sensor.battery_today
+    tertiaryLabel: Today
     image: /local/pv/battery.png
     x: 80
     y: 20
   - id: house
     name: House
+    role: house
     entity: sensor.home_power
+    entityLabel: Load
+    secondaryEntity: sensor.home_energy_today
+    secondaryLabel: Today
     image: /local/pv/house.png
     x: 20
     y: 80
   - id: grid
     name: Grid
+    role: grid
     entity: sensor.grid_power
+    entityLabel: Import / Export
     image: /local/pv/grid.png
     x: 80
     y: 80
@@ -89,7 +111,7 @@ npm run dev:serve
 ```
 
 Source: `src/mergner-pv-card.ts`  
-Build output: `dist/mergner-pv-card.js`
+Build output: `mergner-pv-card.js`
 
 ## Fast Design Preview With Remote HA (RPi)
 
@@ -103,7 +125,7 @@ npm run dev:serve
 
 2. In Home Assistant Lovelace resources (temporary for design phase), set:
 
-- URL: `http://<DEIN-PC-IP>:4173/dist/mergner-pv-card.js`
+- URL: `http://<DEIN-PC-IP>:4173/mergner-pv-card.js`
 - Type: `module`
 
 3. Keep dashboard open, edit code, then hard reload browser (Ctrl+F5).
