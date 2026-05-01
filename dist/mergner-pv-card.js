@@ -1,6 +1,6 @@
 // src/mergner-pv-card.ts
 var DEFAULT_NODES = [
-  { id: "solar", name: "Solar", role: "pv", entityLabel: "Power", secondaryLabel: "Today", x: 20, y: 20 },
+  { id: "solar", name: "Solar", role: "pv", entityLabel: "Power", secondaryLabel: "Today", size: 168, x: 20, y: 20 },
   {
     id: "battery",
     name: "Battery",
@@ -9,11 +9,12 @@ var DEFAULT_NODES = [
     secondaryLabel: "SOC",
     secondaryUnit: "%",
     tertiaryLabel: "Today",
+    size: 168,
     x: 80,
     y: 20
   },
-  { id: "house", name: "House", role: "house", entityLabel: "Load", secondaryLabel: "Today", x: 20, y: 80 },
-  { id: "grid", name: "Grid", role: "grid", entityLabel: "Import / Export", secondaryLabel: "Today", x: 80, y: 80 }
+  { id: "house", name: "House", role: "house", entityLabel: "Load", secondaryLabel: "Today", size: 168, x: 20, y: 80 },
+  { id: "grid", name: "Grid", role: "grid", entityLabel: "Import / Export", secondaryLabel: "Today", size: 168, x: 80, y: 80 }
 ];
 var DEFAULT_LINKS = [
   { from: "solar", to: "house", entity: "sensor.pv_to_house_power" },
@@ -66,6 +67,12 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
       return 0;
     }
     return Math.max(0, Math.min(100, value));
+  }
+  clampNodeSize(value) {
+    if (Number.isNaN(value)) {
+      return 168;
+    }
+    return Math.max(100, Math.min(260, value));
   }
   getEntity(entityId) {
     if (!entityId || !this._hass?.states?.[entityId]) {
@@ -226,6 +233,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         id: node.id?.trim() || `node_${Math.random().toString(36).slice(2, 8)}`,
         name: node.name?.trim() || "Node",
         role: node.role ?? "custom",
+        size: this.clampNodeSize(Number(node.size ?? 168)),
         x: this.clampPercent(Number(node.x)),
         y: this.clampPercent(Number(node.y))
       }));
@@ -252,8 +260,9 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     const extraMetrics = metrics.slice(1);
     const batteryLevel = role === "battery" ? this.getBatteryLevel(metrics) : void 0;
     const safeName = this.safeText(node.name);
+    const nodeSize = this.clampNodeSize(Number(node.size ?? 168));
     const image = node.image?.trim();
-    const media = image ? `<img src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
+    const media = `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
     const batteryStateClass = role === "battery" && primaryMetric && !Number.isNaN(primaryMetric.numericValue) ? primaryMetric.numericValue > 0 ? "is-charging" : primaryMetric.numericValue < 0 ? "is-discharging" : "is-idle" : "";
     const extraMetricMarkup = extraMetrics.map(
       (metric) => `
@@ -269,18 +278,32 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           </div>
         `;
     return `
-      <article class="node node-${role} ${batteryStateClass}" style="left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
-        <div class="node-orb">
-          <div class="node-media">${media}</div>
-          <div class="node-kicker">${this.safeText(this.roleLabel(role))}</div>
-          <div class="node-label">${safeName}</div>
-          <div class="node-value">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>
-          <div class="node-value-label">${this.safeText(primaryMetric.label)}</div>
-          ${batteryMeter}
+      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}px; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
+        <div class="node-orb ${image ? "has-image" : ""}">
+          ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
+          <div class="node-overlay">
+            ${image ? "" : `<div class="node-media">${media}</div>`}
+            <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
+            <div class="node-label node-chip">${safeName}</div>
+            <div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>
+            <div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>
+            ${batteryMeter}
+          </div>
         </div>
         ${extraMetricMarkup ? `<div class="node-stats">${extraMetricMarkup}</div>` : ""}
       </article>
     `;
+  }
+  getLineAnnotationOffset(position) {
+    return position === "bottom" ? 3.6 : -3.6;
+  }
+  getLinkValue(link) {
+    if (!link.valueEntity?.trim()) {
+      return "";
+    }
+    const value = this.getState(link.valueEntity);
+    const unit = link.valueUnit ?? this.getUnit(link.valueEntity);
+    return this.formatMetricValue(value, unit);
   }
   resolveLinkDirection(link) {
     if (!link.entity) {
@@ -300,15 +323,36 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
   }
   renderLinks(nodes, links) {
     const lookup = new Map(nodes.map((node) => [node.id, node]));
-    const lines = links.map((link, idx) => {
+    const lines = links.map((link) => {
       const from = lookup.get(link.from);
       const to = lookup.get(link.to);
       if (!from || !to) {
         return "";
       }
+      const midX = (from.x + to.x) / 2;
+      const midY = (from.y + to.y) / 2;
+      const dx = to.x - from.x;
+      const dy = to.y - from.y;
+      const length = Math.hypot(dx, dy) || 1;
+      const normalX = -dy / length;
+      const normalY = dx / length;
+      const labelPosition = link.labelPosition ?? "top";
+      const valuePosition = link.valuePosition ?? "bottom";
+      const labelText = link.label?.trim() ?? "";
+      const valueText = this.getLinkValue(link);
+      const labelCollisionOffset = labelText && valueText && labelPosition === valuePosition ? 1.8 : 0;
+      const valueCollisionOffset = labelText && valueText && labelPosition === valuePosition ? -1.8 : 0;
+      const labelDistance = this.getLineAnnotationOffset(labelPosition) + labelCollisionOffset;
+      const valueDistance = this.getLineAnnotationOffset(valuePosition) + valueCollisionOffset;
+      const labelX = midX + normalX * labelDistance;
+      const labelY = midY + normalY * labelDistance;
+      const valueX = midX + normalX * valueDistance;
+      const valueY = midY + normalY * valueDistance;
       const direction = this.resolveLinkDirection(link);
-      const label = link.label?.trim() ? `<title>${this.safeText(link.label)}</title>` : "";
-      return `<line class="flow-line ${direction}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${label}</line>`;
+      const title = labelText ? `<title>${this.safeText(labelText)}</title>` : "";
+      const labelMarkup = labelText ? `<text class="flow-annotation flow-annotation-label" x="${labelX}" y="${labelY}" text-anchor="middle" dominant-baseline="middle">${this.safeText(labelText)}</text>` : "";
+      const valueMarkup = valueText ? `<text class="flow-annotation flow-annotation-value" x="${valueX}" y="${valueY}" text-anchor="middle" dominant-baseline="middle">${this.safeText(valueText)}</text>` : "";
+      return `<g class="flow-edge"><line class="flow-line ${direction}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${labelMarkup}${valueMarkup}</g>`;
     }).join("");
     return `<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>`;
   }
@@ -433,6 +477,20 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           animation-play-state: paused;
         }
 
+        .flow-annotation {
+          font-size: 2.4px;
+          font-weight: 700;
+          fill: #f5fbfb;
+          paint-order: stroke;
+          stroke: rgba(0, 0, 0, 0.72);
+          stroke-width: 1.2px;
+          stroke-linejoin: round;
+        }
+
+        .flow-annotation-value {
+          fill: #9deecf;
+        }
+
         @keyframes flow {
           to {
             stroke-dashoffset: -16;
@@ -440,8 +498,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         }
 
         .node {
-          width: min(46vw, 168px);
-          max-width: 168px;
+          width: var(--node-size);
+          max-width: none;
           position: absolute;
           transform: translate(-50%, -50%);
           text-align: center;
@@ -460,6 +518,28 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           border-radius: 50%;
           backdrop-filter: blur(6px);
           box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.18);
+          position: relative;
+          overflow: hidden;
+        }
+
+        .node-bg-image {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          filter: brightness(0.72) saturate(1.05);
+          z-index: 0;
+        }
+
+        .node-overlay {
+          position: relative;
+          z-index: 1;
+          width: 100%;
+          display: grid;
+          align-content: start;
+          justify-items: center;
+          gap: 4px;
         }
 
         .node-media {
@@ -515,6 +595,14 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           margin-top: 2px;
           color: var(--pv-card-muted);
           font-size: 0.67rem;
+        }
+
+        .node-chip {
+          background: rgba(0, 0, 0, 0.52);
+          color: #ffffff;
+          border-radius: 8px;
+          padding: 2px 7px;
+          line-height: 1.2;
         }
 
         .node-stats {
@@ -738,13 +826,14 @@ var MergnerPvCardEditor = class extends HTMLElement {
     const nodeMarkup = nodes.map((node, index) => {
       const image = node.image?.trim();
       const media = image ? `<img src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
+      const layoutSize = Math.max(66, Math.min(128, Math.round((node.size ?? 168) * 0.55)));
       return `
           <button
             class="layout-node"
             data-action="drag-node"
             data-index="${index}"
             type="button"
-            style="left:${node.x}%; top:${node.y}%;"
+            style="--layout-node-size:${layoutSize}px; left:${node.x}%; top:${node.y}%;"
             aria-label="Drag ${this.safeText(node.name)}"
           >
             <div class="layout-node-media">${media}</div>
@@ -839,6 +928,10 @@ var MergnerPvCardEditor = class extends HTMLElement {
                 <span>Y</span>
                 <input data-field="y" type="number" min="0" max="100" value="${node.y}" />
               </label>
+              <label>
+                <span>Size (px)</span>
+                <input data-field="size" type="number" min="100" max="260" value="${Math.round(node.size ?? 168)}" />
+              </label>
             </div>
             <div class="image-tools">
               <label class="upload-field">
@@ -901,6 +994,15 @@ var MergnerPvCardEditor = class extends HTMLElement {
             <select data-field="to">${options}</select>
             ${this.renderEntitySelect(`link-${idx}-entity`, "entity", link.entity, "Choose flow entity", "power")}
             <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
+            <select data-field="labelPosition">
+              <option value="top" ${(link.labelPosition ?? "top") === "top" ? "selected" : ""}>Label top</option>
+              <option value="bottom" ${(link.labelPosition ?? "top") === "bottom" ? "selected" : ""}>Label bottom</option>
+            </select>
+            ${this.renderEntitySelect(`link-${idx}-value-entity`, "valueEntity", link.valueEntity, "Choose value entity", "any")}
+            <select data-field="valuePosition">
+              <option value="top" ${(link.valuePosition ?? "bottom") === "top" ? "selected" : ""}>Value top</option>
+              <option value="bottom" ${(link.valuePosition ?? "bottom") === "bottom" ? "selected" : ""}>Value bottom</option>
+            </select>
             <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
             <button data-action="remove-link" type="button">X</button>
           </div>
@@ -1128,8 +1230,8 @@ var MergnerPvCardEditor = class extends HTMLElement {
         .layout-node {
           position: absolute;
           transform: translate(-50%, -50%);
-          width: 90px;
-          min-height: 90px;
+          width: var(--layout-node-size, 90px);
+          min-height: var(--layout-node-size, 90px);
           aspect-ratio: 1 / 1;
           border-radius: 50%;
           padding: 10px;
@@ -1265,7 +1367,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
         }
 
         .row[data-kind='link'] {
-          grid-template-columns: repeat(4, minmax(0, 1fr)) auto auto;
+          grid-template-columns: repeat(7, minmax(0, 1fr)) auto auto;
         }
 
         input,
