@@ -1346,7 +1346,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
         .metric-grid {
           display: grid;
           gap: 8px;
-          grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+          grid-template-columns: 1fr;
         }
 
         .entity-select-wrap {
@@ -1357,8 +1357,8 @@ var MergnerPvCardEditor = class extends HTMLElement {
         .image-tools {
           display: grid;
           gap: 8px;
-          grid-template-columns: minmax(0, 1fr) auto 84px;
-          align-items: end;
+          grid-template-columns: 1fr;
+          align-items: start;
         }
 
         .upload-field input[type='file'] {
@@ -1405,12 +1405,24 @@ var MergnerPvCardEditor = class extends HTMLElement {
         .row {
           display: grid;
           gap: 6px;
-          grid-template-columns: repeat(6, minmax(0, 1fr)) auto;
+          grid-template-columns: 1fr;
           align-items: center;
         }
 
         .row[data-kind='link'] {
-          grid-template-columns: repeat(7, minmax(0, 1fr)) auto auto;
+          grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 980px) {
+          .node-grid,
+          .metric-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+          }
+
+          .image-tools {
+            grid-template-columns: minmax(0, 1fr) auto 84px;
+            align-items: end;
+          }
         }
 
         input,
