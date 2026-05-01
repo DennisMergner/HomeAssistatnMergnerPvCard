@@ -1,9 +1,9 @@
-var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:"Heute",size:168,x:20,y:20},{id:"battery",name:"Battery",role:"battery",entityLabel:"Laden / Entladen",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Heute",size:168,x:80,y:20},{id:"house",name:"Haus",role:"house",entityLabel:"Verbrauch",secondaryLabel:"Heute",size:168,x:20,y:80},{id:"grid",name:"Netz",role:"grid",entityLabel:"Bezug / Einspeisung",secondaryLabel:"Heute",size:168,x:80,y:80}],x=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],y=class E extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:v,links:x}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){return 5}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}clampNodeSize(e){return Number.isNaN(e)?168:Math.max(40,Math.min(320,e))}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}getUnit(e){let i=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof i=="string"?i:""}parseNumber(e){let a=this.getState(e),i=Number.parseFloat(a);return Number.isFinite(i)?i:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Batterie";case"house":return"Haus";case"grid":return"Netz";default:return"Knoten"}}defaultMetricLabel(e,a){if(a==="primary")switch(e){case"pv":return"Leistung";case"battery":return"Laden / Entladen";case"house":return"Verbrauch";case"grid":return"Bezug / Einspeisung";default:return"Wert"}if(a==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":return"Heute";default:return"Detail"}return e==="battery"?"Heute":"Extra"}formatMetricValue(e,a){let i=e.trim(),t=a.trim();return t?`${i} ${t}`:i}getNodeMetrics(e){let a=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(a,"primary"),showWhenEmpty:!0},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(a,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(a,"tertiary"),showWhenEmpty:!1}].filter(t=>t.showWhenEmpty||!!t.entity?.trim()).map(t=>{let n=t.entity?this.getState(t.entity):"n/a",r=t.unit??(t.entity?this.getUnit(t.entity):"");return{label:t.label?.trim()||t.defaultLabel,value:n,numericValue:t.entity?this.parseNumber(t.entity):Number.NaN,unit:r}})}getBatteryLevel(e){let a=e.find(i=>i.unit==="%"||/soc|state of charge|akku|charge|level/i.test(i.label));if(!(!a||Number.isNaN(a.numericValue)))return this.clampMeterPercent(a.numericValue)}getSummaryUnit(e){for(let a of e){let i=a.unit?.trim()||this.getUnit(a.entity);if(i)return i}return""}renderSummary(e){let i=[{role:"pv",label:"Erzeugung",className:"pv"},{role:"house",label:"Verbrauch",className:"house"},{role:"battery",label:"Batterie",className:"battery"},{role:"grid",label:"Netz",className:"grid"}].map(t=>{let n=e.filter(l=>this.getNodeRole(l)===t.role&&l.entity?.trim());if(n.length===0)return"";let r=n.reduce((l,d)=>l+this.parseNumber(d.entity),0),o=this.getSummaryUnit(n),s=this.formatMetricValue(r.toFixed(Math.abs(r)>=100?0:1),o);return`
+var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:"Heute",size:120,x:20,y:20},{id:"battery",name:"Batterie",role:"battery",entityLabel:"Laden / Entladen",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Heute",size:120,x:80,y:20},{id:"house",name:"Haus",role:"house",entityLabel:"Verbrauch",secondaryLabel:"Heute",size:120,x:20,y:80},{id:"grid",name:"Netz",role:"grid",entityLabel:"Bezug / Einspeisung",secondaryLabel:"Heute",size:120,x:80,y:80}],x=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],y=class E extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:v,links:x}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){return 5}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}clampNodeSize(e){return Number.isNaN(e)?120:Math.max(40,Math.min(320,e))}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}getUnit(e){let a=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}parseNumber(e){let i=this.getState(e),a=Number.parseFloat(i);return Number.isFinite(a)?a:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Batterie";case"house":return"Haus";case"grid":return"Netz";case"inverter":return"Wechselrichter";default:return"Knoten"}}defaultMetricLabel(e,i){if(i==="primary")switch(e){case"pv":return"Leistung";case"battery":return"Laden / Entladen";case"house":return"Verbrauch";case"grid":return"Bezug / Einspeisung";case"inverter":return"Leistung";default:return"Wert"}if(i==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":case"inverter":return"Heute";default:return"Detail"}return e==="battery"?"Heute":"Extra"}formatMetricValue(e,i){let a=e.trim(),t=i.trim();return t?`${a} ${t}`:a}getNodeMetrics(e){let i=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(i,"primary"),showWhenEmpty:!0},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(i,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(i,"tertiary"),showWhenEmpty:!1}].filter(t=>t.showWhenEmpty||!!t.entity?.trim()).map(t=>{let n=t.entity?this.getState(t.entity):"n/a",r=t.unit??(t.entity?this.getUnit(t.entity):"");return{label:t.label?.trim()||t.defaultLabel,value:n,numericValue:t.entity?this.parseNumber(t.entity):Number.NaN,unit:r}})}getBatteryLevel(e){let i=e.find(a=>a.unit==="%"||/soc|state of charge|akku|charge|level/i.test(a.label));if(!(!i||Number.isNaN(i.numericValue)))return this.clampMeterPercent(i.numericValue)}getSummaryUnit(e){for(let i of e){let a=i.unit?.trim()||this.getUnit(i.entity);if(a)return a}return""}renderSummary(e){let a=[{role:"pv",label:"Erzeugung",className:"pv"},{role:"house",label:"Verbrauch",className:"house"},{role:"battery",label:"Batterie",className:"battery"},{role:"grid",label:"Netz",className:"grid"}].map(t=>{let n=e.filter(l=>this.getNodeRole(l)===t.role&&l.entity?.trim());if(n.length===0)return"";let r=n.reduce((l,d)=>l+this.parseNumber(d.entity),0),o=this.getSummaryUnit(n),s=this.formatMetricValue(r.toFixed(Math.abs(r)>=100?0:1),o);return`
           <div class="summary-chip ${t.className}">
             <span>${this.safeText(t.label)}</span>
             <strong>${this.safeText(s)}</strong>
           </div>
-        `}).join("");return i.trim()?`<div class="summary-row">${i}</div>`:""}normalizeConfig(e){let a=e.title??"PV Flow";if(e.nodes&&e.nodes.length>0){let t=e.nodes.map(r=>({...r,id:r.id?.trim()||`node_${Math.random().toString(36).slice(2,8)}`,name:r.name?.trim()||"Node",role:r.role??"custom",size:this.clampNodeSize(Number(r.size??168)),x:this.clampPercent(Number(r.x)),y:this.clampPercent(Number(r.y))})),n=(e.links??[]).filter(r=>t.some(o=>o.id===r.from)&&t.some(o=>o.id===r.to));return{title:a,nodes:t,links:n}}let i=v.map(t=>({...t,entity:e.entities?.[t.id],image:e.images?.[t.id]}));return{title:a,nodes:i,links:x}}renderNode(e){let a=this.getNodeRole(e),i=this.getNodeMetrics(e),t=i[0],n=i.slice(1),r=a==="battery"?this.getBatteryLevel(i):void 0,o=this.safeText(e.name),s=this.clampNodeSize(Number(e.size??168)),l=e.image?.trim(),d=`<div class="fallback-icon">${o.slice(0,1)}</div>`,p=a==="battery"&&t&&!Number.isNaN(t.numericValue)?t.numericValue>0?"is-charging":t.numericValue<0?"is-discharging":"is-idle":"",u=n.map(c=>`
+        `}).join("");return a.trim()?`<div class="summary-row">${a}</div>`:""}normalizeConfig(e){let i=e.title??"PV Flow";if(e.nodes&&e.nodes.length>0){let t=e.nodes.map(r=>({...r,id:r.id?.trim()||`node_${Math.random().toString(36).slice(2,8)}`,name:r.name?.trim()||"Node",role:r.role??"custom",size:this.clampNodeSize(Number(r.size??120)),x:this.clampPercent(Number(r.x)),y:this.clampPercent(Number(r.y))})),n=(e.links??[]).filter(r=>t.some(o=>o.id===r.from)&&t.some(o=>o.id===r.to));return{title:i,nodes:t,links:n}}let a=v.map(t=>({...t,entity:e.entities?.[t.id],image:e.images?.[t.id]}));return{title:i,nodes:a,links:x}}renderNode(e){let i=this.getNodeRole(e),a=this.getNodeMetrics(e),t=a[0],n=a.slice(1),r=i==="battery"?this.getBatteryLevel(a):void 0,o=this.safeText(e.name),s=this.clampNodeSize(Number(e.size??120)),l=e.image?.trim(),d=`<div class="fallback-icon">${o.slice(0,1)}</div>`,p=i==="battery"&&t&&!Number.isNaN(t.numericValue)?t.numericValue>0?"is-charging":t.numericValue<0?"is-discharging":"is-idle":"",u=n.map(c=>`
           <div class="node-stat">
             <span>${this.safeText(c.label)}</span>
             <strong>${this.safeText(this.formatMetricValue(c.value,c.unit))}</strong>
@@ -13,12 +13,12 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
             <div class="battery-meter-fill" style="width:${r}%;"></div>
           </div>
         `;return`
-      <article class="node node-${a} ${p}" style="--node-size:${s}px; left:${this.clampPercent(e.x)}%; top:${this.clampPercent(e.y)}%;">
+      <article class="node node-${i} ${p}" style="--node-size:${s}px; left:${this.clampPercent(e.x)}%; top:${this.clampPercent(e.y)}%;">
         <div class="node-orb ${l?"has-image":""}">
           ${l?`<img class="node-bg-image" src="${this.safeText(l)}" alt="${o}" loading="lazy" />`:""}
           <div class="node-overlay">
             ${l?"":`<div class="node-media">${d}</div>`}
-            <div class="node-kicker node-chip">${this.safeText(this.roleLabel(a))}</div>
+            <div class="node-kicker node-chip">${this.safeText(this.roleLabel(i))}</div>
             <div class="node-label node-chip">${o}</div>
             <div class="node-value node-chip">${this.safeText(this.formatMetricValue(t.value,t.unit))}</div>
             <div class="node-value-label node-chip">${this.safeText(t.label)}</div>
@@ -27,7 +27,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
         </div>
         ${u?`<div class="node-stats">${u}</div>`:""}
       </article>
-    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}getLinkValue(e){if(!e.valueEntity?.trim())return"";let a=this.getState(e.valueEntity),i=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(a,i)}resolveLinkDirection(e){if(!e.entity)return"idle";let a=this.parseNumber(e.entity);return e.invert&&(a=-a),a>0?"forward":a<0?"reverse":"idle"}renderLinks(e,a){let i=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${a.map(n=>{let r=i.get(n.from),o=i.get(n.to);if(!r||!o)return"";let s=(r.x+o.x)/2,l=(r.y+o.y)/2,d=o.x-r.x,p=o.y-r.y,u=Math.hypot(d,p)||1,m=-p/u,c=d/u,g=n.labelPosition??"top",f=n.valuePosition??"bottom",h=n.label?.trim()??"",b=this.getLinkValue(n),N=h&&b&&g===f?1.8:0,k=h&&b&&g===f?-1.8:0,L=this.getLineAnnotationOffset(g)+N,$=this.getLineAnnotationOffset(f)+k,C=s+m*L,T=l+c*L,M=s+m*$,S=l+c*$,z=this.resolveLinkDirection(n),F=h?`<title>${this.safeText(h)}</title>`:"",_=h?`<text class="flow-annotation flow-annotation-label" x="${C}" y="${T}" text-anchor="middle" dominant-baseline="middle">${this.safeText(h)}</text>`:"",P=b?`<text class="flow-annotation flow-annotation-value" x="${M}" y="${S}" text-anchor="middle" dominant-baseline="middle">${this.safeText(b)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${z}" x1="${r.x}" y1="${r.y}" x2="${o.x}" y2="${o.y}">${F}</line>${_}${P}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let a=this.normalizeConfig(this._config??E.getStubConfig());e.innerHTML=`
+    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}getLinkValue(e){if(!e.valueEntity?.trim())return"";let i=this.getState(e.valueEntity),a=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(i,a)}resolveLinkDirection(e){if(!e.entity)return"idle";let i=this.parseNumber(e.entity);return e.invert&&(i=-i),i>0?"forward":i<0?"reverse":"idle"}renderLinks(e,i){let a=new Map(e.map(n=>[n.id,n]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${i.map(n=>{let r=a.get(n.from),o=a.get(n.to);if(!r||!o)return"";let s=(r.x+o.x)/2,l=(r.y+o.y)/2,d=o.x-r.x,p=o.y-r.y,u=Math.hypot(d,p)||1,m=-p/u,c=d/u,g=n.labelPosition??"top",f=n.valuePosition??"bottom",h=n.label?.trim()??"",b=this.getLinkValue(n),N=h&&b&&g===f?1.8:0,k=h&&b&&g===f?-1.8:0,L=this.getLineAnnotationOffset(g)+N,$=this.getLineAnnotationOffset(f)+k,C=s+m*L,T=l+c*L,M=s+m*$,S=l+c*$,z=this.resolveLinkDirection(n),_=h?`<title>${this.safeText(h)}</title>`:"",F=h?`<text class="flow-annotation flow-annotation-label" x="${C}" y="${T}" text-anchor="middle" dominant-baseline="middle">${this.safeText(h)}</text>`:"",H=b?`<text class="flow-annotation flow-annotation-value" x="${M}" y="${S}" text-anchor="middle" dominant-baseline="middle">${this.safeText(b)}</text>`:"";return`<g class="flow-edge"><line class="flow-line ${z}" x1="${r.x}" y1="${r.y}" x2="${o.x}" y2="${o.y}">${_}</line>${F}${H}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.normalizeConfig(this._config??E.getStubConfig());e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -103,7 +103,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
 
         .flow-wrap {
           position: relative;
-          min-height: 220px;
+          min-height: clamp(180px, 42vw, 520px);
           aspect-ratio: 4 / 3;
           border-radius: 14px;
           background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 45%);
@@ -338,14 +338,14 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
       </style>
 
       <ha-card>
-        <div class="title">${this.safeText(a.title)}</div>
-        ${this.renderSummary(a.nodes)}
+        <div class="title">${this.safeText(i.title)}</div>
+        ${this.renderSummary(i.nodes)}
         <div class="flow-wrap">
-          ${this.renderLinks(a.nodes,a.links)}
-          ${a.nodes.map(i=>this.renderNode(i)).join("")}
+          ${this.renderLinks(i.nodes,i.links)}
+          ${i.nodes.map(a=>this.renderNode(a)).join("")}
         </div>
       </ha-card>
-    `}},w=class extends HTMLElement{_config;_hass;_dragNodeIndex;_dragEventsBound=!1;_entityIdsSignature="";safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}setConfig(e){this._config={...y.getStubConfig(),...e},this.render()}set hass(e){let a=Object.keys(e?.states??{}).sort((t,n)=>t.localeCompare(n)).join("|"),i=!this._hass||a!==this._entityIdsSignature;this._hass=e,this._entityIdsSignature=a,i&&this.render()}connectedCallback(){this.bindDragEvents(),this.render()}get safeConfig(){return this._config??y.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,a,i,t){let n=[...e];n[i]={...n[i],...t},this.emitConfig({...this.safeConfig,nodes:n,links:a})}bindDragEvents(){this._dragEventsBound||(window.addEventListener("pointermove",this.handlePointerMove),window.addEventListener("pointerup",this.handlePointerUp),window.addEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!0)}disconnectedCallback(){this._dragEventsBound&&(window.removeEventListener("pointermove",this.handlePointerMove),window.removeEventListener("pointerup",this.handlePointerUp),window.removeEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!1)}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,a)=>e.localeCompare(a))}getEntityUnit(e){let i=this._hass?.states?.[e]?.attributes?.unit_of_measurement;return typeof i=="string"?i:""}getEntityDeviceClass(e){let i=this._hass?.states?.[e]?.attributes?.device_class;return typeof i=="string"?i:""}matchesEntityFilter(e,a){if(a==="any")return!0;let i=this.getEntityUnit(e).toLowerCase(),t=this.getEntityDeviceClass(e).toLowerCase();return a==="power"?/^(w|kw|mw|gw|va|kva)$/.test(i)||["power","apparent_power","reactive_power"].includes(t):a==="energy"?/^(wh|kwh|mwh|gwh)$/.test(i)||t==="energy":i==="%"||t==="battery"}getNodeEntityFilter(e,a){return a==="entity"?"power":a==="secondaryEntity"?e.role==="battery"?"percent":"energy":a==="tertiaryEntity"?"energy":"any"}renderEntitySelect(e,a,i,t="Select entity",n="any"){let r=this.getEntityIds(),o=i?.trim()??"",s=o&&!r.includes(o)?`<option value="${this.safeText(o)}" selected>${this.safeText(o)}</option>`:"",l=r.filter(c=>this.matchesEntityFilter(c,n)),d=r.filter(c=>!l.includes(c)),p=c=>c.map(g=>{let f=g===o?"selected":"";return`<option value="${this.safeText(g)}" ${f}>${this.safeText(g)}</option>`}).join(""),u=l.length>0?`<optgroup label="Recommended">${p(l)}</optgroup>`:"",m=d.length>0?`<optgroup label="All entities">${p(d)}</optgroup>`:"";return`
+    `}},w=class extends HTMLElement{_config;_hass;_dragNodeIndex;_dragEventsBound=!1;_entityIdsSignature="";_layoutZoom=100;safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}setConfig(e){this._config={...y.getStubConfig(),...e},this.render()}set hass(e){let i=Object.keys(e?.states??{}).sort((t,n)=>t.localeCompare(n)).join("|"),a=!this._hass||i!==this._entityIdsSignature;this._hass=e,this._entityIdsSignature=i,a&&this.render()}connectedCallback(){this.bindDragEvents(),this.render()}get safeConfig(){return this._config??y.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,i,a,t){let n=[...e];n[a]={...n[a],...t},this.emitConfig({...this.safeConfig,nodes:n,links:i})}bindDragEvents(){this._dragEventsBound||(window.addEventListener("pointermove",this.handlePointerMove),window.addEventListener("pointerup",this.handlePointerUp),window.addEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!0)}disconnectedCallback(){this._dragEventsBound&&(window.removeEventListener("pointermove",this.handlePointerMove),window.removeEventListener("pointerup",this.handlePointerUp),window.removeEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!1)}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,i)=>e.localeCompare(i))}getEntityUnit(e){let a=this._hass?.states?.[e]?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}getEntityDeviceClass(e){let a=this._hass?.states?.[e]?.attributes?.device_class;return typeof a=="string"?a:""}matchesEntityFilter(e,i){if(i==="any")return!0;let a=this.getEntityUnit(e).toLowerCase(),t=this.getEntityDeviceClass(e).toLowerCase();return i==="power"?/^(w|kw|mw|gw|va|kva)$/.test(a)||["power","apparent_power","reactive_power"].includes(t):i==="energy"?/^(wh|kwh|mwh|gwh)$/.test(a)||t==="energy":a==="%"||t==="battery"}getNodeEntityFilter(e,i){return i==="entity"?"power":i==="secondaryEntity"?e.role==="battery"?"percent":"energy":i==="tertiaryEntity"?"energy":"any"}renderEntitySelect(e,i,a,t="Select entity",n="any"){let r=this.getEntityIds(),o=a?.trim()??"",s=o&&!r.includes(o)?`<option value="${this.safeText(o)}" selected>${this.safeText(o)}</option>`:"",l=r.filter(c=>this.matchesEntityFilter(c,n)),d=r.filter(c=>!l.includes(c)),p=c=>c.map(g=>{let f=g===o?"selected":"";return`<option value="${this.safeText(g)}" ${f}>${this.safeText(g)}</option>`}).join(""),u=l.length>0?`<optgroup label="Recommended">${p(l)}</optgroup>`:"",m=d.length>0?`<optgroup label="All entities">${p(d)}</optgroup>`:"";return`
       <div class="entity-select-wrap">
         <input
           type="search"
@@ -354,20 +354,20 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           placeholder="Search entities..."
           aria-label="Search entities"
         />
-        <select data-field="${String(a)}" data-entity-select-id="${this.safeText(e)}">
+        <select data-field="${String(i)}" data-entity-select-id="${this.safeText(e)}">
           <option value="">${this.safeText(t)}</option>
           ${s}
           ${u}
           ${m}
         </select>
       </div>
-    `}renderLayoutCanvas(e,a){let i=new Map(e.map(r=>[r.id,r])),t=a.map(r=>{let o=i.get(r.from),s=i.get(r.to);return!o||!s?"":`<line x1="${o.x}" y1="${o.y}" x2="${s.x}" y2="${s.y}"></line>`}).join(""),n=e.map((r,o)=>{let s=r.image?.trim(),l=s?`<img src="${this.safeText(s)}" alt="${this.safeText(r.name)}" />`:`<span>${this.safeText(r.name.slice(0,1).toUpperCase())}</span>`,d=Math.max(24,Math.min(148,Math.round((r.size??168)*.55)));return`
+    `}renderLayoutCanvas(e,i){let a=new Map(e.map(r=>[r.id,r])),t=i.map(r=>{let o=a.get(r.from),s=a.get(r.to);return!o||!s?"":`<line x1="${o.x}" y1="${o.y}" x2="${s.x}" y2="${s.y}"></line>`}).join(""),n=e.map((r,o)=>{let s=r.image?.trim(),l=s?`<img src="${this.safeText(s)}" alt="${this.safeText(r.name)}" />`:`<span>${this.safeText(r.name.slice(0,1).toUpperCase())}</span>`,d=this._layoutZoom/100,p=Math.max(24,Math.min(220,Math.round((r.size??120)*d)));return`
           <button
             class="layout-node"
             data-action="drag-node"
             data-index="${o}"
             type="button"
-            style="--layout-node-size:${d}px; left:${r.x}%; top:${r.y}%;"
+            style="--layout-node-size:${p}px; left:${r.x}%; top:${r.y}%;"
             aria-label="Drag ${this.safeText(r.name)}"
           >
             <div class="layout-node-media">${l}</div>
@@ -375,13 +375,20 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           </button>
         `}).join("");return`
       <div class="layout-canvas-wrap">
+        <div class="layout-toolbar">
+          <label>
+            <span>Zoom</span>
+            <input type="range" data-action="layout-zoom" min="50" max="160" step="5" value="${this._layoutZoom}" />
+          </label>
+          <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${this._layoutZoom}" />
+        </div>
         <div class="layout-hint">Drag devices in the preview to set X/Y positions.</div>
         <div class="layout-canvas">
           <svg class="layout-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${t}</svg>
           ${n}
         </div>
       </div>
-    `}startNodeDrag(e){this._dragNodeIndex=e}handlePointerMove=e=>{if(this._dragNodeIndex===void 0)return;let i=this.shadowRoot?.querySelector(".layout-canvas");if(!i)return;let t=i.getBoundingClientRect();if(t.width===0||t.height===0)return;let n=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:v,r=this.safeConfig.links??x,o=Math.max(4,Math.min(96,(e.clientX-t.left)/t.width*100)),s=Math.max(4,Math.min(96,(e.clientY-t.top)/t.height*100));this.updateNode(n,r,this._dragNodeIndex,{x:Number(o.toFixed(1)),y:Number(s.toFixed(1))})};handlePointerUp=()=>{this._dragNodeIndex=void 0};readFileAsDataUrl(e){return new Promise((a,i)=>{let t=new FileReader;t.addEventListener("load",()=>{if(typeof t.result=="string"){a(t.result);return}i(new Error("Image upload failed"))}),t.addEventListener("error",()=>i(t.error??new Error("Image upload failed"))),t.readAsDataURL(e)})}renderNodeRows(e){let a=["pv","battery","house","grid","custom"];return e.map((i,t)=>`
+    `}startNodeDrag(e){this._dragNodeIndex=e}handlePointerMove=e=>{if(this._dragNodeIndex===void 0)return;let a=this.shadowRoot?.querySelector(".layout-canvas");if(!a)return;let t=a.getBoundingClientRect();if(t.width===0||t.height===0)return;let n=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:v,r=this.safeConfig.links??x,o=Math.max(4,Math.min(96,(e.clientX-t.left)/t.width*100)),s=Math.max(4,Math.min(96,(e.clientY-t.top)/t.height*100));this.updateNode(n,r,this._dragNodeIndex,{x:Number(o.toFixed(1)),y:Number(s.toFixed(1))})};handlePointerUp=()=>{this._dragNodeIndex=void 0};readFileAsDataUrl(e){return new Promise((i,a)=>{let t=new FileReader;t.addEventListener("load",()=>{if(typeof t.result=="string"){i(t.result);return}a(new Error("Image upload failed"))}),t.addEventListener("error",()=>a(t.error??new Error("Image upload failed"))),t.readAsDataURL(e)})}renderNodeRows(e){let i=["pv","battery","house","grid","inverter","custom"];return e.map((a,t)=>`
           <section class="node-card" data-kind="node" data-index="${t}">
             <div class="card-head">
               <strong>Node ${t+1}</strong>
@@ -390,33 +397,33 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
             <div class="node-grid">
               <label>
                 <span>ID</span>
-                <input data-field="id" value="${this.safeText(i.id)}" placeholder="battery_1" />
+                <input data-field="id" value="${this.safeText(a.id)}" placeholder="battery_1" />
               </label>
               <label>
                 <span>Name</span>
-                <input data-field="name" value="${this.safeText(i.name)}" placeholder="Battery 1" />
+                <input data-field="name" value="${this.safeText(a.name)}" placeholder="Battery 1" />
               </label>
               <label>
                 <span>Type</span>
                 <select data-field="role">
-                  ${a.map(n=>`<option value="${n}" ${(i.role??"custom")===n?"selected":""}>${n}</option>`).join("")}
+                  ${i.map(n=>`<option value="${n}" ${(a.role??"custom")===n?"selected":""}>${n}</option>`).join("")}
                 </select>
               </label>
               <label>
                 <span>Image URL</span>
-                <input data-field="image" value="${this.safeText(i.image??"")}" placeholder="/local/pv/battery.png" />
+                <input data-field="image" value="${this.safeText(a.image??"")}" placeholder="/local/pv/battery.png" />
               </label>
               <label>
                 <span>X</span>
-                <input data-field="x" type="number" min="0" max="100" value="${i.x}" />
+                <input data-field="x" type="number" min="0" max="100" value="${a.x}" />
               </label>
               <label>
                 <span>Y</span>
-                <input data-field="y" type="number" min="0" max="100" value="${i.y}" />
+                <input data-field="y" type="number" min="0" max="100" value="${a.y}" />
               </label>
               <label>
                 <span>Size (px)</span>
-                <input data-field="size" type="number" min="40" max="320" value="${Math.round(i.size??168)}" />
+                <input data-field="size" type="number" min="40" max="320" value="${Math.round(a.size??120)}" />
               </label>
             </div>
             <div class="image-tools">
@@ -425,53 +432,53 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
                 <input data-action="upload-image" type="file" accept="image/*" />
               </label>
               <button data-action="clear-image" type="button">Clear image</button>
-              <div class="image-preview ${i.image?.trim()?"has-image":""}">
-                ${i.image?.trim()?`<img src="${this.safeText(i.image)}" alt="${this.safeText(i.name)} preview" />`:"<span>No image</span>"}
+              <div class="image-preview ${a.image?.trim()?"has-image":""}">
+                ${a.image?.trim()?`<img src="${this.safeText(a.image)}" alt="${this.safeText(a.name)} preview" />`:"<span>No image</span>"}
               </div>
             </div>
             <div class="metric-grid">
               <label>
                 <span>Primary entity</span>
-                ${this.renderEntitySelect(`node-${t}-entity`,"entity",i.entity,"Choose primary entity",this.getNodeEntityFilter(i,"entity"))}
+                ${this.renderEntitySelect(`node-${t}-entity`,"entity",a.entity,"Choose primary entity",this.getNodeEntityFilter(a,"entity"))}
               </label>
               <label>
                 <span>Primary label</span>
-                <input data-field="entityLabel" value="${this.safeText(i.entityLabel??"")}" placeholder="Charge / Discharge" />
+                <input data-field="entityLabel" value="${this.safeText(a.entityLabel??"")}" placeholder="Charge / Discharge" />
               </label>
               <label>
                 <span>Primary unit</span>
-                <input data-field="unit" value="${this.safeText(i.unit??"")}" placeholder="auto / W" />
+                <input data-field="unit" value="${this.safeText(a.unit??"")}" placeholder="auto / W" />
               </label>
               <label>
                 <span>Secondary entity</span>
-                ${this.renderEntitySelect(`node-${t}-secondary`,"secondaryEntity",i.secondaryEntity,"Choose secondary entity",this.getNodeEntityFilter(i,"secondaryEntity"))}
+                ${this.renderEntitySelect(`node-${t}-secondary`,"secondaryEntity",a.secondaryEntity,"Choose secondary entity",this.getNodeEntityFilter(a,"secondaryEntity"))}
               </label>
               <label>
                 <span>Secondary label</span>
-                <input data-field="secondaryLabel" value="${this.safeText(i.secondaryLabel??"")}" placeholder="SOC" />
+                <input data-field="secondaryLabel" value="${this.safeText(a.secondaryLabel??"")}" placeholder="SOC" />
               </label>
               <label>
                 <span>Secondary unit</span>
-                <input data-field="secondaryUnit" value="${this.safeText(i.secondaryUnit??"")}" placeholder="auto / %" />
+                <input data-field="secondaryUnit" value="${this.safeText(a.secondaryUnit??"")}" placeholder="auto / %" />
               </label>
               <label>
                 <span>Tertiary entity</span>
-                ${this.renderEntitySelect(`node-${t}-tertiary`,"tertiaryEntity",i.tertiaryEntity,"Choose tertiary entity",this.getNodeEntityFilter(i,"tertiaryEntity"))}
+                ${this.renderEntitySelect(`node-${t}-tertiary`,"tertiaryEntity",a.tertiaryEntity,"Choose tertiary entity",this.getNodeEntityFilter(a,"tertiaryEntity"))}
               </label>
               <label>
                 <span>Tertiary label</span>
-                <input data-field="tertiaryLabel" value="${this.safeText(i.tertiaryLabel??"")}" placeholder="Today" />
+                <input data-field="tertiaryLabel" value="${this.safeText(a.tertiaryLabel??"")}" placeholder="Today" />
               </label>
               <label>
                 <span>Tertiary unit</span>
-                <input data-field="tertiaryUnit" value="${this.safeText(i.tertiaryUnit??"")}" placeholder="auto / kWh" />
+                <input data-field="tertiaryUnit" value="${this.safeText(a.tertiaryUnit??"")}" placeholder="auto / kWh" />
               </label>
             </div>
           </section>
-        `).join("")}renderLinkRows(e,a){let i=a.map(t=>`<option value="${this.safeText(t.id)}">${this.safeText(t.name)} (${this.safeText(t.id)})</option>`).join("");return e.map((t,n)=>`
+        `).join("")}renderLinkRows(e,i){let a=i.map(t=>`<option value="${this.safeText(t.id)}">${this.safeText(t.name)} (${this.safeText(t.id)})</option>`).join("");return e.map((t,n)=>`
           <div class="row" data-kind="link" data-index="${n}">
-            <select data-field="from">${i}</select>
-            <select data-field="to">${i}</select>
+            <select data-field="from">${a}</select>
+            <select data-field="to">${a}</select>
             ${this.renderEntitySelect(`link-${n}-entity`,"entity",t.entity,"Choose flow entity","power")}
             <input data-field="label" value="${this.safeText(t.label??"")}" placeholder="Label optional" />
             <select data-field="labelPosition">
@@ -486,7 +493,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
             <label class="invert"><input data-field="invert" type="checkbox" ${t.invert?"checked":""} />invert</label>
             <button data-action="remove-link" type="button">X</button>
           </div>
-        `).join("")}wireEvents(e,a){let i=this.shadowRoot;i&&(i.querySelectorAll("input[data-action='entity-search']").forEach(t=>{t.addEventListener("input",()=>{let n=t.dataset.target;if(!n)return;let r=i.querySelector(`select[data-entity-select-id='${n}']`);if(!r)return;let o=t.value.trim().toLowerCase();r.querySelectorAll("option").forEach(s=>{if(!s.value){s.hidden=!1;return}let l=(s.textContent??"").toLowerCase(),d=s.value.toLowerCase(),p=s.selected;s.hidden=o.length>0&&!p&&!l.includes(o)&&!d.includes(o)})})}),i.querySelectorAll(".node-card[data-kind='node']").forEach((t,n)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{r.addEventListener("change",()=>{let o=r.dataset.field,s=r instanceof HTMLInputElement&&r.type==="number"?Number(r.value):r.value;this.updateNode(e,a,n,{[o]:s})})}),t.querySelector("input[data-action='upload-image']")?.addEventListener("change",async r=>{let o=r.currentTarget,s=o.files?.[0];if(s)try{let l=await this.readFileAsDataUrl(s);this.updateNode(e,a,n,{image:l})}catch(l){console.error(l)}finally{o.value=""}}),t.querySelector("button[data-action='clear-image']")?.addEventListener("click",()=>{this.updateNode(e,a,n,{image:""})}),t.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let r=e.filter((l,d)=>d!==n),o=new Set(r.map(l=>l.id)),s=a.filter(l=>o.has(l.from)&&o.has(l.to));this.emitConfig({...this.safeConfig,nodes:r,links:s})})}),i.querySelectorAll("button[data-action='drag-node']").forEach(t=>{t.addEventListener("pointerdown",n=>{if(n.button!==0)return;let r=Number(t.dataset.index);Number.isFinite(r)&&(n.preventDefault(),this.startNodeDrag(r))})}),i.querySelectorAll(".row[data-kind='link']").forEach((t,n)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{if(r instanceof HTMLInputElement&&r.type==="checkbox"){r.addEventListener("change",()=>{let o=[...a];o[n]={...o[n],invert:r.checked},this.emitConfig({...this.safeConfig,nodes:e,links:o})});return}r.addEventListener("change",()=>{let o=r.dataset.field,s=[...a];s[n]={...s[n],[o]:r.value},this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),t.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let r=a.filter((o,s)=>s!==n);this.emitConfig({...this.safeConfig,nodes:e,links:r})})}),i.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let t=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:t,links:a})}),i.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let t=[...a,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:t})}),i.querySelectorAll(".row[data-kind='link']").forEach((t,n)=>{let r=t.querySelectorAll("select[data-field]"),o=a[n];r[0]&&(r[0].value=o.from),r[1]&&(r[1].value=o.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let a=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:v,i=this.safeConfig.links??x;e.innerHTML=`
+        `).join("")}wireEvents(e,i){let a=this.shadowRoot;a&&(a.querySelectorAll("input[data-action='entity-search']").forEach(t=>{t.addEventListener("input",()=>{let n=t.dataset.target;if(!n)return;let r=a.querySelector(`select[data-entity-select-id='${n}']`);if(!r)return;let o=t.value.trim().toLowerCase();r.querySelectorAll("option").forEach(s=>{if(!s.value){s.hidden=!1;return}let l=(s.textContent??"").toLowerCase(),d=s.value.toLowerCase(),p=s.selected;s.hidden=o.length>0&&!p&&!l.includes(o)&&!d.includes(o)})})}),a.querySelectorAll("input[data-action='layout-zoom']").forEach(t=>{t.addEventListener("input",()=>{let n=Number(t.value);Number.isFinite(n)&&(this._layoutZoom=Math.max(50,Math.min(160,n)),this.render())})}),a.querySelectorAll(".node-card[data-kind='node']").forEach((t,n)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{r.addEventListener("change",()=>{let o=r.dataset.field,s=r instanceof HTMLInputElement&&r.type==="number"?Number(r.value):r.value;this.updateNode(e,i,n,{[o]:s})})}),t.querySelector("input[data-action='upload-image']")?.addEventListener("change",async r=>{let o=r.currentTarget,s=o.files?.[0];if(s)try{let l=await this.readFileAsDataUrl(s);this.updateNode(e,i,n,{image:l})}catch(l){console.error(l)}finally{o.value=""}}),t.querySelector("button[data-action='clear-image']")?.addEventListener("click",()=>{this.updateNode(e,i,n,{image:""})}),t.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let r=e.filter((l,d)=>d!==n),o=new Set(r.map(l=>l.id)),s=i.filter(l=>o.has(l.from)&&o.has(l.to));this.emitConfig({...this.safeConfig,nodes:r,links:s})})}),a.querySelectorAll("button[data-action='drag-node']").forEach(t=>{t.addEventListener("pointerdown",n=>{if(n.button!==0)return;let r=Number(t.dataset.index);Number.isFinite(r)&&(n.preventDefault(),this.startNodeDrag(r))})}),a.querySelectorAll(".row[data-kind='link']").forEach((t,n)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(r=>{if(r instanceof HTMLInputElement&&r.type==="checkbox"){r.addEventListener("change",()=>{let o=[...i];o[n]={...o[n],invert:r.checked},this.emitConfig({...this.safeConfig,nodes:e,links:o})});return}r.addEventListener("change",()=>{let o=r.dataset.field,s=[...i];s[n]={...s[n],[o]:r.value},this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),t.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let r=i.filter((o,s)=>s!==n);this.emitConfig({...this.safeConfig,nodes:e,links:r})})}),a.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let t=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:t,links:i})}),a.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let t=[...i,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:t})}),a.querySelectorAll(".row[data-kind='link']").forEach((t,n)=>{let r=t.querySelectorAll("select[data-field]"),o=i[n];r[0]&&(r[0].value=o.from),r[1]&&(r[1].value=o.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let i=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:v,a=this.safeConfig.links??x;e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -526,6 +533,17 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
           gap: 10px;
         }
 
+        .layout-toolbar {
+          display: grid;
+          grid-template-columns: 1fr 92px;
+          gap: 8px;
+          align-items: end;
+        }
+
+        .layout-toolbar input[type='range'] {
+          padding: 0;
+        }
+
         .layout-hint {
           color: var(--secondary-text-color);
           font-size: 0.82rem;
@@ -533,7 +551,7 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
 
         .layout-canvas {
           position: relative;
-          min-height: 280px;
+          min-height: clamp(180px, 42vw, 520px);
           aspect-ratio: 4 / 3;
           border-radius: 18px;
           overflow: hidden;
@@ -773,6 +791,10 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
             grid-template-columns: 1fr;
           }
 
+          .layout-toolbar {
+            grid-template-columns: 1fr;
+          }
+
           .layout-canvas {
             aspect-ratio: 1 / 1;
           }
@@ -804,21 +826,21 @@ var v=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
         <section class="panel">
           <h3 class="panel-title">Layout</h3>
           <p class="panel-copy">Place devices visually. The X and Y fields update while you drag.</p>
-          ${this.renderLayoutCanvas(a,i)}
+          ${this.renderLayoutCanvas(i,a)}
         </section>
 
         <section class="panel">
           <h3 class="panel-title">Devices</h3>
           <p class="panel-copy">Each device can show up to three values, for example power, SOC and daily energy.</p>
-          ${this.renderNodeRows(a)}
+          ${this.renderNodeRows(i)}
           <div class="actions"><button data-action="add-node" type="button">Add device</button></div>
         </section>
 
         <section class="panel">
           <h3 class="panel-title">Flows</h3>
           <p class="panel-copy">Connect devices and assign a power sensor to control arrow direction.</p>
-          ${this.renderLinkRows(i,a)}
+          ${this.renderLinkRows(a,i)}
           <div class="actions"><button data-action="add-link" type="button">Add flow</button></div>
         </section>
       </div>
-    `;let t=e.querySelector("#title");t?.addEventListener("change",()=>{this.emitConfig({...this.safeConfig,title:t.value,nodes:a,links:i})}),this.wireEvents(a,i)}};customElements.define("mergner-pv-card",y);customElements.define("mergner-pv-card-editor",w);window.customCards=window.customCards||[];window.customCards.push({type:"mergner-pv-card",name:"Mergner PV Card",description:"Dynamic PV flow card with visual editor",preview:!0});
+    `;let t=e.querySelector("#title");t?.addEventListener("change",()=>{this.emitConfig({...this.safeConfig,title:t.value,nodes:i,links:a})}),this.wireEvents(i,a)}};customElements.define("mergner-pv-card",y);customElements.define("mergner-pv-card-editor",w);window.customCards=window.customCards||[];window.customCards.push({type:"mergner-pv-card",name:"Mergner PV Card",description:"Dynamic PV flow card with visual editor",preview:!0});

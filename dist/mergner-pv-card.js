@@ -1,20 +1,20 @@
 // src/mergner-pv-card.ts
 var DEFAULT_NODES = [
-  { id: "solar", name: "Solar", role: "pv", entityLabel: "Leistung", secondaryLabel: "Heute", size: 168, x: 20, y: 20 },
+  { id: "solar", name: "Solar", role: "pv", entityLabel: "Leistung", secondaryLabel: "Heute", size: 120, x: 20, y: 20 },
   {
     id: "battery",
-    name: "Battery",
+    name: "Batterie",
     role: "battery",
     entityLabel: "Laden / Entladen",
     secondaryLabel: "SOC",
     secondaryUnit: "%",
     tertiaryLabel: "Heute",
-    size: 168,
+    size: 120,
     x: 80,
     y: 20
   },
-  { id: "house", name: "Haus", role: "house", entityLabel: "Verbrauch", secondaryLabel: "Heute", size: 168, x: 20, y: 80 },
-  { id: "grid", name: "Netz", role: "grid", entityLabel: "Bezug / Einspeisung", secondaryLabel: "Heute", size: 168, x: 80, y: 80 }
+  { id: "house", name: "Haus", role: "house", entityLabel: "Verbrauch", secondaryLabel: "Heute", size: 120, x: 20, y: 80 },
+  { id: "grid", name: "Netz", role: "grid", entityLabel: "Bezug / Einspeisung", secondaryLabel: "Heute", size: 120, x: 80, y: 80 }
 ];
 var DEFAULT_LINKS = [
   { from: "solar", to: "house", entity: "sensor.pv_to_house_power" },
@@ -70,7 +70,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
   }
   clampNodeSize(value) {
     if (Number.isNaN(value)) {
-      return 168;
+      return 120;
     }
     return Math.max(40, Math.min(320, value));
   }
@@ -106,6 +106,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         return "Haus";
       case "grid":
         return "Netz";
+      case "inverter":
+        return "Wechselrichter";
       default:
         return "Knoten";
     }
@@ -121,6 +123,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
           return "Verbrauch";
         case "grid":
           return "Bezug / Einspeisung";
+        case "inverter":
+          return "Leistung";
         default:
           return "Wert";
       }
@@ -132,6 +136,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         case "pv":
         case "house":
         case "grid":
+        case "inverter":
           return "Heute";
         default:
           return "Detail";
@@ -233,7 +238,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
         id: node.id?.trim() || `node_${Math.random().toString(36).slice(2, 8)}`,
         name: node.name?.trim() || "Node",
         role: node.role ?? "custom",
-        size: this.clampNodeSize(Number(node.size ?? 168)),
+        size: this.clampNodeSize(Number(node.size ?? 120)),
         x: this.clampPercent(Number(node.x)),
         y: this.clampPercent(Number(node.y))
       }));
@@ -260,7 +265,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     const extraMetrics = metrics.slice(1);
     const batteryLevel = role === "battery" ? this.getBatteryLevel(metrics) : void 0;
     const safeName = this.safeText(node.name);
-    const nodeSize = this.clampNodeSize(Number(node.size ?? 168));
+    const nodeSize = this.clampNodeSize(Number(node.size ?? 120));
     const image = node.image?.trim();
     const media = `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
     const batteryStateClass = role === "battery" && primaryMetric && !Number.isNaN(primaryMetric.numericValue) ? primaryMetric.numericValue > 0 ? "is-charging" : primaryMetric.numericValue < 0 ? "is-discharging" : "is-idle" : "";
@@ -441,7 +446,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
         .flow-wrap {
           position: relative;
-          min-height: 220px;
+          min-height: clamp(180px, 42vw, 520px);
           aspect-ratio: 4 / 3;
           border-radius: 14px;
           background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 45%);
@@ -692,6 +697,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
   _dragNodeIndex;
   _dragEventsBound = false;
   _entityIdsSignature = "";
+  _layoutZoom = 100;
   safeText(input) {
     return input.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
   }
@@ -834,7 +840,8 @@ var MergnerPvCardEditor = class extends HTMLElement {
     const nodeMarkup = nodes.map((node, index) => {
       const image = node.image?.trim();
       const media = image ? `<img src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
-      const layoutSize = Math.max(24, Math.min(148, Math.round((node.size ?? 168) * 0.55)));
+      const zoomFactor = this._layoutZoom / 100;
+      const layoutSize = Math.max(24, Math.min(220, Math.round((node.size ?? 120) * zoomFactor)));
       return `
           <button
             class="layout-node"
@@ -851,6 +858,13 @@ var MergnerPvCardEditor = class extends HTMLElement {
     }).join("");
     return `
       <div class="layout-canvas-wrap">
+        <div class="layout-toolbar">
+          <label>
+            <span>Zoom</span>
+            <input type="range" data-action="layout-zoom" min="50" max="160" step="5" value="${this._layoutZoom}" />
+          </label>
+          <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${this._layoutZoom}" />
+        </div>
         <div class="layout-hint">Drag devices in the preview to set X/Y positions.</div>
         <div class="layout-canvas">
           <svg class="layout-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>
@@ -899,7 +913,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
     });
   }
   renderNodeRows(nodes) {
-    const roleOptions = ["pv", "battery", "house", "grid", "custom"];
+    const roleOptions = ["pv", "battery", "house", "grid", "inverter", "custom"];
     return nodes.map(
       (node, idx) => `
           <section class="node-card" data-kind="node" data-index="${idx}">
@@ -938,7 +952,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
               </label>
               <label>
                 <span>Size (px)</span>
-                <input data-field="size" type="number" min="40" max="320" value="${Math.round(node.size ?? 168)}" />
+                <input data-field="size" type="number" min="40" max="320" value="${Math.round(node.size ?? 120)}" />
               </label>
             </div>
             <div class="image-tools">
@@ -1043,6 +1057,16 @@ var MergnerPvCardEditor = class extends HTMLElement {
           const isSelected = option.selected;
           option.hidden = term.length > 0 && !isSelected && !optionText.includes(term) && !optionValue.includes(term);
         });
+      });
+    });
+    root.querySelectorAll("input[data-action='layout-zoom']").forEach((input) => {
+      input.addEventListener("input", () => {
+        const next = Number(input.value);
+        if (!Number.isFinite(next)) {
+          return;
+        }
+        this._layoutZoom = Math.max(50, Math.min(160, next));
+        this.render();
       });
     });
     root.querySelectorAll(".node-card[data-kind='node']").forEach((row, index) => {
@@ -1201,6 +1225,17 @@ var MergnerPvCardEditor = class extends HTMLElement {
           gap: 10px;
         }
 
+        .layout-toolbar {
+          display: grid;
+          grid-template-columns: 1fr 92px;
+          gap: 8px;
+          align-items: end;
+        }
+
+        .layout-toolbar input[type='range'] {
+          padding: 0;
+        }
+
         .layout-hint {
           color: var(--secondary-text-color);
           font-size: 0.82rem;
@@ -1208,7 +1243,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
 
         .layout-canvas {
           position: relative;
-          min-height: 280px;
+          min-height: clamp(180px, 42vw, 520px);
           aspect-ratio: 4 / 3;
           border-radius: 18px;
           overflow: hidden;
@@ -1445,6 +1480,10 @@ var MergnerPvCardEditor = class extends HTMLElement {
           .image-tools,
           .row,
           .row[data-kind='link'] {
+            grid-template-columns: 1fr;
+          }
+
+          .layout-toolbar {
             grid-template-columns: 1fr;
           }
 

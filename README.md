@@ -15,6 +15,8 @@ Custom Home Assistant Lovelace card for PV energy flow visualization with dynami
 - Readable in-circle labels with dark translucent background
 - Cleaner editor layout with grouped sections and select fields for entities
 - Draggable layout preview inside the editor for direct device positioning
+- Node type now includes inverter (Wechselrichter)
+- Layout preview zoom control for more realistic positioning against final card
 - Recommended entity groups for power, energy and battery percentage fields
 - Search input above each entity dropdown for fast sensor lookup
 - Flow lines can show label and live entity value, each configurable top or bottom
@@ -45,7 +47,7 @@ If resource is not added automatically, add this manual resource:
 4. Search/select Mergner PV Card.
 5. Configure everything in the card editor:
    - Title
-  - Layout preview with drag and drop for X/Y positioning
+  - Layout preview with drag and drop for X/Y positioning plus zoom
   - Nodes (id, name, type, image, size, x, y)
   - Device image either via URL or direct upload
   - Entity selection via dropdowns with recommended matches first
