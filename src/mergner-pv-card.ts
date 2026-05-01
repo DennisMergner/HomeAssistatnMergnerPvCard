@@ -868,6 +868,7 @@ class MergnerPvCardEditor extends HTMLElement {
   }
 
   private renderEntitySelect(
+    selectorId: string,
     field: keyof FlowNode | keyof FlowLink,
     value?: string,
     placeholder = "Select entity",
@@ -891,12 +892,21 @@ class MergnerPvCardEditor extends HTMLElement {
     const allGroup = remainingEntityIds.length > 0 ? `<optgroup label="All entities">${renderOptions(remainingEntityIds)}</optgroup>` : "";
 
     return `
-      <select data-field="${String(field)}">
-        <option value="">${this.safeText(placeholder)}</option>
-        ${customOption}
-        ${preferredGroup}
-        ${allGroup}
-      </select>
+      <div class="entity-select-wrap">
+        <input
+          type="search"
+          data-action="entity-search"
+          data-target="${this.safeText(selectorId)}"
+          placeholder="Search entities..."
+          aria-label="Search entities"
+        />
+        <select data-field="${String(field)}" data-entity-select-id="${this.safeText(selectorId)}">
+          <option value="">${this.safeText(placeholder)}</option>
+          ${customOption}
+          ${preferredGroup}
+          ${allGroup}
+        </select>
+      </div>
     `;
   }
 
@@ -1050,7 +1060,7 @@ class MergnerPvCardEditor extends HTMLElement {
             <div class="metric-grid">
               <label>
                 <span>Primary entity</span>
-                ${this.renderEntitySelect("entity", node.entity, "Choose primary entity", this.getNodeEntityFilter(node, "entity"))}
+                ${this.renderEntitySelect(`node-${idx}-entity`, "entity", node.entity, "Choose primary entity", this.getNodeEntityFilter(node, "entity"))}
               </label>
               <label>
                 <span>Primary label</span>
@@ -1062,7 +1072,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
               <label>
                 <span>Secondary entity</span>
-                ${this.renderEntitySelect("secondaryEntity", node.secondaryEntity, "Choose secondary entity", this.getNodeEntityFilter(node, "secondaryEntity"))}
+                ${this.renderEntitySelect(`node-${idx}-secondary`, "secondaryEntity", node.secondaryEntity, "Choose secondary entity", this.getNodeEntityFilter(node, "secondaryEntity"))}
               </label>
               <label>
                 <span>Secondary label</span>
@@ -1074,7 +1084,7 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
               <label>
                 <span>Tertiary entity</span>
-                ${this.renderEntitySelect("tertiaryEntity", node.tertiaryEntity, "Choose tertiary entity", this.getNodeEntityFilter(node, "tertiaryEntity"))}
+                ${this.renderEntitySelect(`node-${idx}-tertiary`, "tertiaryEntity", node.tertiaryEntity, "Choose tertiary entity", this.getNodeEntityFilter(node, "tertiaryEntity"))}
               </label>
               <label>
                 <span>Tertiary label</span>
@@ -1102,7 +1112,7 @@ class MergnerPvCardEditor extends HTMLElement {
           <div class="row" data-kind="link" data-index="${idx}">
             <select data-field="from">${options}</select>
             <select data-field="to">${options}</select>
-            ${this.renderEntitySelect("entity", link.entity, "Choose flow entity", "power")}
+            ${this.renderEntitySelect(`link-${idx}-entity`, "entity", link.entity, "Choose flow entity", "power")}
             <input data-field="label" value="${this.safeText(link.label ?? "")}" placeholder="Label optional" />
             <label class="invert"><input data-field="invert" type="checkbox" ${link.invert ? "checked" : ""} />invert</label>
             <button data-action="remove-link" type="button">X</button>
@@ -1117,6 +1127,33 @@ class MergnerPvCardEditor extends HTMLElement {
     if (!root) {
       return;
     }
+
+    root.querySelectorAll<HTMLInputElement>("input[data-action='entity-search']").forEach((searchInput) => {
+      searchInput.addEventListener("input", () => {
+        const target = searchInput.dataset.target;
+        if (!target) {
+          return;
+        }
+
+        const select = root.querySelector<HTMLSelectElement>(`select[data-entity-select-id='${target}']`);
+        if (!select) {
+          return;
+        }
+
+        const term = searchInput.value.trim().toLowerCase();
+        select.querySelectorAll<HTMLOptionElement>("option").forEach((option) => {
+          if (!option.value) {
+            option.hidden = false;
+            return;
+          }
+
+          const optionText = (option.textContent ?? "").toLowerCase();
+          const optionValue = option.value.toLowerCase();
+          const isSelected = option.selected;
+          option.hidden = term.length > 0 && !isSelected && !optionText.includes(term) && !optionValue.includes(term);
+        });
+      });
+    });
 
     root.querySelectorAll<HTMLElement>(".node-card[data-kind='node']").forEach((row, index) => {
       row.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input[data-field], select[data-field]").forEach((input) => {
@@ -1401,6 +1438,11 @@ class MergnerPvCardEditor extends HTMLElement {
           display: grid;
           gap: 8px;
           grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        }
+
+        .entity-select-wrap {
+          display: grid;
+          gap: 6px;
         }
 
         .image-tools {
