@@ -698,6 +698,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
   _dragEventsBound = false;
   _entityIdsSignature = "";
   _layoutZoom = 100;
+  _layoutZoomMode = "auto";
   safeText(input) {
     return input.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
   }
@@ -837,10 +838,11 @@ var MergnerPvCardEditor = class extends HTMLElement {
       }
       return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`;
     }).join("");
+    const effectiveZoom = this.getEffectiveLayoutZoom(nodes);
     const nodeMarkup = nodes.map((node, index) => {
       const image = node.image?.trim();
       const media = image ? `<img src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
-      const zoomFactor = this._layoutZoom / 100;
+      const zoomFactor = effectiveZoom / 100;
       const layoutSize = Math.max(24, Math.min(220, Math.round((node.size ?? 120) * zoomFactor)));
       return `
           <button
@@ -860,10 +862,17 @@ var MergnerPvCardEditor = class extends HTMLElement {
       <div class="layout-canvas-wrap">
         <div class="layout-toolbar">
           <label>
-            <span>Zoom</span>
-            <input type="range" data-action="layout-zoom" min="50" max="160" step="5" value="${this._layoutZoom}" />
+            <span>Zoom mode</span>
+            <select data-action="layout-zoom-mode">
+              <option value="auto" ${this._layoutZoomMode === "auto" ? "selected" : ""}>Auto fit</option>
+              <option value="manual" ${this._layoutZoomMode === "manual" ? "selected" : ""}>Manual</option>
+            </select>
           </label>
-          <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${this._layoutZoom}" />
+          <label>
+            <span>Zoom</span>
+            <input type="range" data-action="layout-zoom" min="50" max="160" step="5" value="${effectiveZoom}" ${this._layoutZoomMode === "auto" ? "disabled" : ""} />
+          </label>
+          <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${effectiveZoom}" ${this._layoutZoomMode === "auto" ? "disabled" : ""} />
         </div>
         <div class="layout-hint">Drag devices in the preview to set X/Y positions.</div>
         <div class="layout-canvas">
@@ -875,6 +884,16 @@ var MergnerPvCardEditor = class extends HTMLElement {
   }
   startNodeDrag(index) {
     this._dragNodeIndex = index;
+  }
+  getEffectiveLayoutZoom(nodes) {
+    if (this._layoutZoomMode === "manual") {
+      return this._layoutZoom;
+    }
+    const maxNodeSize = Math.max(...nodes.map((node) => this.clampNodeSize(Number(node.size ?? 120))), 120);
+    const densityFactor = nodes.length >= 8 ? 0.78 : nodes.length >= 6 ? 0.86 : nodes.length >= 4 ? 0.93 : 1;
+    const targetNodePx = 84;
+    const autoZoom = Math.round(targetNodePx / maxNodeSize * 100 * densityFactor);
+    return Math.max(50, Math.min(160, autoZoom));
   }
   handlePointerMove = (event) => {
     if (this._dragNodeIndex === void 0) {
@@ -1065,9 +1084,17 @@ var MergnerPvCardEditor = class extends HTMLElement {
         if (!Number.isFinite(next)) {
           return;
         }
+        this._layoutZoomMode = "manual";
         this._layoutZoom = Math.max(50, Math.min(160, next));
         this.render();
       });
+    });
+    root.querySelector("select[data-action='layout-zoom-mode']")?.addEventListener("change", (event) => {
+      const select = event.currentTarget;
+      if (select.value === "auto" || select.value === "manual") {
+        this._layoutZoomMode = select.value;
+        this.render();
+      }
     });
     root.querySelectorAll(".node-card[data-kind='node']").forEach((row, index) => {
       row.querySelectorAll("input[data-field], select[data-field]").forEach((input) => {
@@ -1227,7 +1254,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
 
         .layout-toolbar {
           display: grid;
-          grid-template-columns: 1fr 92px;
+          grid-template-columns: minmax(120px, 0.8fr) 1fr 92px;
           gap: 8px;
           align-items: end;
         }
@@ -1243,6 +1270,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
 
         .layout-canvas {
           position: relative;
+          width: 100%;
           min-height: clamp(180px, 42vw, 520px);
           aspect-ratio: 4 / 3;
           border-radius: 18px;

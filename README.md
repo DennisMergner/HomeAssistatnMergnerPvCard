@@ -17,6 +17,7 @@ Custom Home Assistant Lovelace card for PV energy flow visualization with dynami
 - Draggable layout preview inside the editor for direct device positioning
 - Node type now includes inverter (Wechselrichter)
 - Layout preview zoom control for more realistic positioning against final card
+- Auto-fit and manual zoom mode for layout positioning
 - Recommended entity groups for power, energy and battery percentage fields
 - Search input above each entity dropdown for fast sensor lookup
 - Flow lines can show label and live entity value, each configurable top or bottom
