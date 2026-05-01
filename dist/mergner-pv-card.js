@@ -361,22 +361,73 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
   getLineAnnotationOffset(position) {
     return position === "bottom" ? 3.6 : -3.6;
   }
+  toWatts(value, unit) {
+    const trimmed = unit.trim().toLowerCase();
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    if (trimmed === "kw") {
+      return value * 1e3;
+    }
+    if (trimmed === "mw") {
+      return value * 1e6;
+    }
+    return value;
+  }
+  getEntityPowerWatts(entityId) {
+    if (!entityId?.trim()) {
+      return 0;
+    }
+    const raw = Math.abs(this.parseNumber(entityId));
+    return this.toWatts(raw, this.getUnit(entityId));
+  }
+  getSignedFlowPowerWatts(link) {
+    const hasDirectionalEntities = Boolean(link.forwardEntity?.trim() || link.reverseEntity?.trim());
+    if (hasDirectionalEntities) {
+      const forward = this.getEntityPowerWatts(link.forwardEntity);
+      const reverse = this.getEntityPowerWatts(link.reverseEntity);
+      let signed2 = 0;
+      if (forward > 0 || reverse > 0) {
+        if (forward >= reverse) {
+          signed2 = forward;
+        } else {
+          signed2 = -reverse;
+        }
+      }
+      return link.invert ? -signed2 : signed2;
+    }
+    if (!link.entity?.trim()) {
+      return 0;
+    }
+    const rawValue = this.parseNumber(link.entity);
+    const signed = this.toWatts(rawValue, this.getUnit(link.entity));
+    return link.invert ? -signed : signed;
+  }
   getLinkValue(link) {
-    if (!link.valueEntity?.trim()) {
+    if (link.valueEntity?.trim()) {
+      const value = this.getState(link.valueEntity);
+      const unit = link.valueUnit ?? this.getUnit(link.valueEntity);
+      return this.formatMetricValue(value, unit);
+    }
+    const signedPower = this.getSignedFlowPowerWatts(link);
+    if (signedPower === 0) {
       return "";
     }
-    const value = this.getState(link.valueEntity);
-    const unit = link.valueUnit ?? this.getUnit(link.valueEntity);
-    return this.formatMetricValue(value, unit);
+    const activeDirectionalEntity = signedPower > 0 ? link.forwardEntity?.trim() || "" : link.reverseEntity?.trim() || "";
+    if (activeDirectionalEntity) {
+      const value = this.getState(activeDirectionalEntity);
+      const unit = link.valueUnit ?? this.getUnit(activeDirectionalEntity);
+      return this.formatMetricValue(value, unit);
+    }
+    if (link.entity?.trim()) {
+      const value = this.getState(link.entity);
+      const unit = link.valueUnit ?? this.getUnit(link.entity);
+      return this.formatMetricValue(value, unit);
+    }
+    return "";
   }
   resolveLinkDirection(link) {
-    if (!link.entity) {
-      return "idle";
-    }
-    let value = this.parseNumber(link.entity);
-    if (link.invert) {
-      value = -value;
-    }
+    const value = this.getSignedFlowPowerWatts(link);
     if (value > 0) {
       return "forward";
     }
@@ -386,20 +437,9 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
     return "idle";
   }
   getLinkPowerWatts(link) {
-    if (!link.entity) {
-      return 0;
-    }
-    const rawValue = this.parseNumber(link.entity);
-    const absValue = Math.abs(link.invert ? -rawValue : rawValue);
+    const absValue = Math.abs(this.getSignedFlowPowerWatts(link));
     if (!Number.isFinite(absValue)) {
       return 0;
-    }
-    const unit = this.getUnit(link.entity).trim().toLowerCase();
-    if (unit === "kw") {
-      return absValue * 1e3;
-    }
-    if (unit === "mw") {
-      return absValue * 1e6;
     }
     return absValue;
   }
@@ -1278,7 +1318,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
               <strong>Flow ${idx + 1}</strong>
               <button data-action="remove-link" type="button">Remove flow</button>
             </div>
-            <p class="link-hint">Configure source/target first, then set power entity and optional line labels.</p>
+            <p class="link-hint">Configure source/target first. Use either a single signed sensor or separate forward/reverse sensors for bidirectional flows.</p>
             <div class="link-grid">
               <label>
                 <span>From device</span>
@@ -1289,8 +1329,16 @@ var MergnerPvCardEditor = class extends HTMLElement {
                 <select data-field="to">${options}</select>
               </label>
               <label class="link-wide">
-                <span>Flow power entity</span>
+                <span>Flow power entity (single signed sensor)</span>
                 ${this.renderEntitySelect(`link-${idx}-entity`, "entity", link.entity, "Choose flow entity", "power")}
+              </label>
+              <label class="link-wide">
+                <span>Forward amount entity (from -> to)</span>
+                ${this.renderEntitySelect(`link-${idx}-forward-entity`, "forwardEntity", link.forwardEntity, "Choose forward amount entity", "power")}
+              </label>
+              <label class="link-wide">
+                <span>Reverse amount entity (to -> from)</span>
+                ${this.renderEntitySelect(`link-${idx}-reverse-entity`, "reverseEntity", link.reverseEntity, "Choose reverse amount entity", "power")}
               </label>
               <label class="inline-toggle">
                 <span>Direction</span>
