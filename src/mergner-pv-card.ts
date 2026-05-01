@@ -880,15 +880,16 @@ class MergnerPvCardEditor extends HTMLElement {
     return Math.max(2, Math.min(98, value));
   }
 
-  private normalizeEditorConfig(config: CardConfig): CardConfig {
+  private normalizeEditorConfig(config?: Partial<CardConfig>): CardConfig {
     const base = MergnerPvCard.getStubConfig();
+    const incoming = config ?? {};
     const merged: CardConfig = {
       ...base,
-      ...config,
-      title: (config.title ?? base.title ?? "PV Flow").toString()
+      ...incoming,
+      title: (incoming.title ?? base.title ?? "PV Flow").toString()
     };
 
-    const rawNodes = Array.isArray(config.nodes) && config.nodes.length > 0 ? config.nodes : (base.nodes ?? []);
+    const rawNodes = Array.isArray(incoming.nodes) && incoming.nodes.length > 0 ? incoming.nodes : (base.nodes ?? []);
     const nodes = rawNodes.map((node, index) => ({
       ...node,
       id: (node.id ?? `node_${index + 1}`).toString().trim() || `node_${index + 1}`,
@@ -900,7 +901,7 @@ class MergnerPvCardEditor extends HTMLElement {
     }));
 
     const validIds = new Set(nodes.map((node) => node.id));
-    const rawLinks = Array.isArray(config.links) ? config.links : (base.links ?? []);
+  const rawLinks = Array.isArray(incoming.links) ? incoming.links : (base.links ?? []);
     const links = rawLinks.filter((link) => validIds.has(link.from) && validIds.has(link.to));
 
     return {
@@ -910,7 +911,7 @@ class MergnerPvCardEditor extends HTMLElement {
     };
   }
 
-  setConfig(config: CardConfig): void {
+  setConfig(config?: CardConfig): void {
     this._config = this.normalizeEditorConfig(config);
     this.render();
   }

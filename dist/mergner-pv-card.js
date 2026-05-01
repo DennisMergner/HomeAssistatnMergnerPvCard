@@ -717,12 +717,13 @@ var MergnerPvCardEditor = class extends HTMLElement {
   }
   normalizeEditorConfig(config) {
     const base = MergnerPvCard.getStubConfig();
+    const incoming = config ?? {};
     const merged = {
       ...base,
-      ...config,
-      title: (config.title ?? base.title ?? "PV Flow").toString()
+      ...incoming,
+      title: (incoming.title ?? base.title ?? "PV Flow").toString()
     };
-    const rawNodes = Array.isArray(config.nodes) && config.nodes.length > 0 ? config.nodes : base.nodes ?? [];
+    const rawNodes = Array.isArray(incoming.nodes) && incoming.nodes.length > 0 ? incoming.nodes : base.nodes ?? [];
     const nodes = rawNodes.map((node, index) => ({
       ...node,
       id: (node.id ?? `node_${index + 1}`).toString().trim() || `node_${index + 1}`,
@@ -733,7 +734,7 @@ var MergnerPvCardEditor = class extends HTMLElement {
       size: this.clampEditorNodeSize(Number(node.size ?? 120))
     }));
     const validIds = new Set(nodes.map((node) => node.id));
-    const rawLinks = Array.isArray(config.links) ? config.links : base.links ?? [];
+    const rawLinks = Array.isArray(incoming.links) ? incoming.links : base.links ?? [];
     const links = rawLinks.filter((link) => validIds.has(link.from) && validIds.has(link.to));
     return {
       ...merged,
