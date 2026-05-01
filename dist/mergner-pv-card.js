@@ -112,6 +112,9 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
   getState(entityId) {
     return this.getEntity(entityId)?.state ?? "n/a";
   }
+  isEmptyState(value) {
+    return !value || value === "n/a" || value === "unavailable" || value === "unknown";
+  }
   getUnit(entityId) {
     const attributes = this.getEntity(entityId)?.attributes;
     const unit = attributes?.unit_of_measurement;
@@ -350,8 +353,8 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
             ${image ? "" : `<div class="node-media">${media}</div>`}
             <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
             <div class="node-label node-chip">${safeName}</div>
-            ${primaryMetric ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
-            ${primaryMetric ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
+            ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
+            ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
             ${batteryMeter}
           </div>
         </div>
