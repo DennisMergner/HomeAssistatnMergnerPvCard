@@ -163,7 +163,7 @@ var x=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
 
         .node {
           width: var(--node-size);
-          height: var(--node-size);
+          aspect-ratio: 1 / 1;
           max-width: none;
           position: absolute;
           transform: translate(-50%, -50%);
@@ -334,7 +334,7 @@ var x=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:
 
           .node {
             width: min(58vw, var(--node-size));
-            height: min(58vw, var(--node-size));
+            aspect-ratio: 1 / 1;
           }
         }
       </style>

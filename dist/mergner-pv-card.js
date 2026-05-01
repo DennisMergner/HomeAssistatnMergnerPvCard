@@ -581,7 +581,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
         .node {
           width: var(--node-size);
-          height: var(--node-size);
+          aspect-ratio: 1 / 1;
           max-width: none;
           position: absolute;
           transform: translate(-50%, -50%);
@@ -752,7 +752,7 @@ var MergnerPvCard = class _MergnerPvCard extends HTMLElement {
 
           .node {
             width: min(58vw, var(--node-size));
-            height: min(58vw, var(--node-size));
+            aspect-ratio: 1 / 1;
           }
         }
       </style>
