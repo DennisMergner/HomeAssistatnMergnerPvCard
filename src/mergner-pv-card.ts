@@ -408,12 +408,58 @@ class MergnerPvCard extends HTMLElement {
     return "";
   }
 
+  private summaryIcon(role: NodeRole): string {
+    switch (role) {
+      case "grid":
+        // Power pole / transmission tower
+        return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M12 2L8 8H4l2 2-4 8h6l2 4h4l2-4h6l-4-8 2-2h-4L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          <line x1="12" y1="8" x2="12" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="6" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>`;
+      case "house":
+        // House / consumption
+        return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M3 10.5L12 3l9 7.5V21H15v-5h-6v5H3V10.5z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>`;
+      case "pv":
+        // Solar panel
+        return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="2" y="7" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <line x1="12" y1="7" x2="12" y2="17" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="2" y1="12" x2="22" y2="12" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="12" y1="2" x2="12" y2="5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="19" y1="4" x2="17" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <line x1="5" y1="4" x2="7" y2="6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>`;
+      case "battery":
+        // Battery
+        return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="2" y="7" width="18" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M20 10.5v3" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+          <rect x="4" y="9" width="8" height="6" rx="1" fill="currentColor" opacity="0.5"/>
+        </svg>`;
+      case "inverter":
+        // Inverter / converter symbol
+        return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M7 15l3-6 2 4 2-4 3 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>`;
+      default:
+        // Generic lightning bolt for custom
+        return `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+        </svg>`;
+    }
+  }
+
   private renderSummary(nodes: FlowNode[]): string {
     const groups: Array<{ role: NodeRole; label: string; className: string }> = [
-      { role: "pv", label: "Erzeugung", className: "pv" },
+      { role: "grid", label: "Netz", className: "grid" },
       { role: "house", label: "Verbrauch", className: "house" },
+      { role: "pv", label: "Erzeugung", className: "pv" },
       { role: "battery", label: "Batterie", className: "battery" },
-      { role: "grid", label: "Netz", className: "grid" }
+      { role: "inverter", label: "Wechselrichter", className: "inverter" }
     ];
 
     const items = groups
@@ -429,8 +475,11 @@ class MergnerPvCard extends HTMLElement {
 
         return `
           <div class="summary-chip ${group.className}">
-            <span>${this.safeText(group.label)}</span>
-            <strong>${this.safeText(value)}</strong>
+            <div class="summary-icon">${this.summaryIcon(group.role)}</div>
+            <div class="summary-text">
+              <span>${this.safeText(group.label)}</span>
+              <strong>${this.safeText(value)}</strong>
+            </div>
           </div>
         `;
       })
@@ -906,46 +955,116 @@ class MergnerPvCard extends HTMLElement {
 
         .summary-row {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
           gap: 8px;
           margin-bottom: 12px;
         }
 
         .summary-chip {
-          background: rgba(255, 255, 255, 0.08);
+          background: rgba(255, 255, 255, 0.07);
           border: 1px solid rgba(255, 255, 255, 0.12);
           border-radius: 14px;
           padding: 8px 10px;
-          display: grid;
-          gap: 2px;
+          display: flex;
+          flex-direction: row;
+          align-items: center;
+          gap: 9px;
           backdrop-filter: blur(4px);
         }
 
+        .summary-icon {
+          flex-shrink: 0;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.08);
+          padding: 4px;
+          box-sizing: border-box;
+        }
+
+        .summary-icon svg {
+          width: 100%;
+          height: 100%;
+          color: currentColor;
+        }
+
+        .summary-text {
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          min-width: 0;
+        }
+
         .summary-chip span {
-          font-size: 0.7rem;
+          font-size: 0.68rem;
           text-transform: uppercase;
           letter-spacing: 0.06em;
           color: var(--pv-card-muted);
+          white-space: nowrap;
         }
 
         .summary-chip strong {
           font-size: 1rem;
+          font-weight: 600;
+          white-space: nowrap;
         }
 
+        .summary-chip.pv {
+          border-color: rgba(156, 240, 165, 0.22);
+        }
+        .summary-chip.pv .summary-icon {
+          background: rgba(156, 240, 165, 0.14);
+          color: #9cf0a5;
+        }
         .summary-chip.pv strong {
           color: #9cf0a5;
         }
 
+        .summary-chip.house {
+          border-color: rgba(245, 247, 250, 0.16);
+        }
+        .summary-chip.house .summary-icon {
+          background: rgba(245, 247, 250, 0.1);
+          color: #f5f7fa;
+        }
         .summary-chip.house strong {
           color: #f5f7fa;
         }
 
+        .summary-chip.battery {
+          border-color: rgba(141, 224, 255, 0.2);
+        }
+        .summary-chip.battery .summary-icon {
+          background: rgba(141, 224, 255, 0.12);
+          color: #8de0ff;
+        }
         .summary-chip.battery strong {
           color: #8de0ff;
         }
 
+        .summary-chip.grid {
+          border-color: rgba(255, 201, 131, 0.2);
+        }
+        .summary-chip.grid .summary-icon {
+          background: rgba(255, 201, 131, 0.12);
+          color: #ffc983;
+        }
         .summary-chip.grid strong {
           color: #ffc983;
+        }
+
+        .summary-chip.inverter {
+          border-color: rgba(200, 180, 255, 0.2);
+        }
+        .summary-chip.inverter .summary-icon {
+          background: rgba(200, 180, 255, 0.12);
+          color: #c8b4ff;
+        }
+        .summary-chip.inverter strong {
+          color: #c8b4ff;
         }
 
         .flow-wrap {
@@ -1975,14 +2094,14 @@ class MergnerPvCardEditor extends HTMLElement {
               <label>
                 <span>Forward flow color</span>
                 <div class="color-row">
-                  <input data-field="forwardColor" type="color" value="${this.sanitizeHexColor(link.forwardColor, DEFAULT_FLOW_STYLE.forwardColor)}" />
+                  <input data-field="forwardColor" type="color" value="${this.sanitizeEditorHexColor(link.forwardColor, DEFAULT_FLOW_STYLE.forwardColor)}" />
                   <span class="color-hint">${link.forwardColor ? "custom" : "global default"}</span>
                 </div>
               </label>
               <label>
                 <span>Reverse flow color</span>
                 <div class="color-row">
-                  <input data-field="reverseColor" type="color" value="${this.sanitizeHexColor(link.reverseColor, DEFAULT_FLOW_STYLE.reverseColor)}" />
+                  <input data-field="reverseColor" type="color" value="${this.sanitizeEditorHexColor(link.reverseColor, DEFAULT_FLOW_STYLE.reverseColor)}" />
                   <span class="color-hint">${link.reverseColor ? "custom" : "global default"}</span>
                 </div>
               </label>
