@@ -552,15 +552,19 @@ class MergnerPvCard extends HTMLElement {
 
     return `
       <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
+        <div class="node-header">
+          <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
+          <div class="node-label node-chip">${safeName}</div>
+        </div>
         <div class="node-orb ${image ? "has-image" : ""}">
           ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
           <div class="node-overlay">
             ${image ? "" : `<div class="node-media">${media}</div>`}
-            <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
-            <div class="node-label node-chip">${safeName}</div>
-            ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
-            ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
-            ${batteryMeter}
+            <div class="node-bottom-info">
+              ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
+              ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
+              ${batteryMeter}
+            </div>
           </div>
         </div>
         ${extraMetricMarkup ? `<div class="node-stats">${extraMetricMarkup}</div>` : ""}
@@ -785,6 +789,9 @@ class MergnerPvCard extends HTMLElement {
         const particleRadius = Math.max(0.55, Math.min(2.4, strokeWidth * 0.9));
         const particleCount = this.getFlowParticleCount(powerWatts, direction, flowStyle);
         const pathId = `flow-path-${idx}`;
+        const linkForwardColor = this.sanitizeHexColor(link.forwardColor, flowStyle.forwardColor);
+        const linkReverseColor = this.sanitizeHexColor(link.reverseColor, flowStyle.reverseColor);
+        const edgeStyle = `--flow-forward:${linkForwardColor}; --flow-reverse:${linkReverseColor};`;
         const lineStyle = `--flow-stroke:${strokeWidth.toFixed(2)}; --flow-dash:${dashLength.toFixed(2)}; --flow-gap:${dashGap.toFixed(2)}; --flow-duration:${durationSeconds.toFixed(2)}s;`;
         const title = labelText ? `<title>${this.safeText(labelText)}</title>` : "";
         const labelMarkup = labelText
@@ -810,7 +817,7 @@ class MergnerPvCard extends HTMLElement {
             }).join("")
             : "";
 
-        return `<g class="flow-edge"><path id="${pathId}" class="flow-path-helper" d="M ${from.x} ${from.y} L ${to.x} ${to.y}"></path><line class="flow-line ${direction} ${flowStyle.linePattern}" style="${lineStyle}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${particleMarkup}${labelMarkup}${valueMarkup}</g>`;
+        return `<g class="flow-edge" style="${edgeStyle}"><path id="${pathId}" class="flow-path-helper" d="M ${from.x} ${from.y} L ${to.x} ${to.y}"></path><line class="flow-line ${direction} ${flowStyle.linePattern}" style="${lineStyle}" x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}">${title}</line>${particleMarkup}${labelMarkup}${valueMarkup}</g>`;
       })
       .join("");
 
@@ -1032,18 +1039,28 @@ class MergnerPvCard extends HTMLElement {
 
         .node {
           width: var(--node-size);
-          aspect-ratio: 1 / 1;
           max-width: none;
           position: absolute;
           transform: translate(-50%, -50%);
           text-align: center;
           z-index: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .node-header {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          margin-bottom: 4px;
+          max-width: 120%;
+          width: max-content;
         }
 
         .node-orb {
           width: 100%;
-          height: 100%;
-          min-height: 0;
           aspect-ratio: 1 / 1;
           padding: 0;
           display: grid;
@@ -1075,12 +1092,20 @@ class MergnerPvCard extends HTMLElement {
           z-index: 1;
           width: 100%;
           height: 100%;
-          display: grid;
-          align-content: start;
-          justify-items: center;
-          gap: 4px;
-          padding: 10px 10px 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding: 0 6px 8px;
           box-sizing: border-box;
+        }
+
+        .node-bottom-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          width: 100%;
         }
 
         .node-orb.has-image {
@@ -1117,29 +1142,28 @@ class MergnerPvCard extends HTMLElement {
         }
 
         .node-label {
-          font-size: calc(0.84rem * var(--node-text-scale, 1));
-          font-weight: 700;
-          margin-top: 2px;
-          max-width: 100px;
+          font-size: calc(0.82rem * var(--node-text-scale, 1));
+          font-weight: 500;
+          max-width: 120px;
         }
 
         .node-kicker {
           color: var(--pv-card-muted);
-          font-size: calc(0.64rem * var(--node-text-scale, 1));
+          font-size: calc(0.62rem * var(--node-text-scale, 1));
+          font-weight: 400;
           text-transform: uppercase;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.05em;
         }
 
         .node-value {
-          margin-top: 3px;
-          font-size: calc(0.97rem * var(--node-text-scale, 1));
-          font-weight: 700;
+          font-size: calc(0.95rem * var(--node-text-scale, 1));
+          font-weight: 600;
         }
 
         .node-value-label {
-          margin-top: 2px;
           color: var(--pv-card-muted);
-          font-size: calc(0.67rem * var(--node-text-scale, 1));
+          font-size: calc(0.65rem * var(--node-text-scale, 1));
+          font-weight: 400;
         }
 
         .node-chip {
@@ -1948,6 +1972,20 @@ class MergnerPvCardEditor extends HTMLElement {
                 <span>Value unit override</span>
                 <input data-field="valueUnit" value="${this.safeText(link.valueUnit ?? "")}" placeholder="auto / W / kW" />
               </label>
+              <label>
+                <span>Forward flow color</span>
+                <div class="color-row">
+                  <input data-field="forwardColor" type="color" value="${this.sanitizeHexColor(link.forwardColor, DEFAULT_FLOW_STYLE.forwardColor)}" />
+                  <span class="color-hint">${link.forwardColor ? "custom" : "global default"}</span>
+                </div>
+              </label>
+              <label>
+                <span>Reverse flow color</span>
+                <div class="color-row">
+                  <input data-field="reverseColor" type="color" value="${this.sanitizeHexColor(link.reverseColor, DEFAULT_FLOW_STYLE.reverseColor)}" />
+                  <span class="color-hint">${link.reverseColor ? "custom" : "global default"}</span>
+                </div>
+              </label>
             </div>
             `}
             <button data-action="remove-link" type="button" class="remove-button">Remove Flow</button>
@@ -2181,7 +2219,8 @@ class MergnerPvCardEditor extends HTMLElement {
           return;
         }
 
-        input.addEventListener("change", () => {
+        const eventName = input instanceof HTMLInputElement && input.type === "color" ? "input" : "change";
+        input.addEventListener(eventName, () => {
           const field = input.dataset.field as keyof FlowLink;
           const nextLinks = [...links];
           nextLinks[index] = { ...nextLinks[index], [field]: input.value };
@@ -2821,6 +2860,26 @@ class MergnerPvCardEditor extends HTMLElement {
         .inline-toggle-row input {
           width: auto;
           margin: 0;
+        }
+
+        .color-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .color-row input[type="color"] {
+          width: 44px;
+          height: 32px;
+          padding: 2px;
+          border-radius: 6px;
+          cursor: pointer;
+        }
+
+        .color-hint {
+          font-size: 0.75rem;
+          color: var(--secondary-text-color, rgba(128,128,128,0.8));
+          font-style: italic;
         }
 
         @media (min-width: 980px) {
