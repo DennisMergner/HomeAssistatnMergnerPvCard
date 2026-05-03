@@ -61,6 +61,8 @@ type FlowLink = {
   entity?: string;
   forwardEntity?: string;
   reverseEntity?: string;
+  forwardColor?: string;
+  reverseColor?: string;
   invert?: boolean;
   label?: string;
   forwardLabel?: string;
@@ -1058,6 +1060,7 @@ class MergnerPvCard extends HTMLElement {
 
     const normalized = this.normalizeConfig(this._config ?? MergnerPvCard.getStubConfig());
     const fittedNodes = this.fitNodesToCard(normalized.nodes);
+    const frame = this.getFlowFrameSettings(fittedNodes);
 
     root.innerHTML = `
       <style>

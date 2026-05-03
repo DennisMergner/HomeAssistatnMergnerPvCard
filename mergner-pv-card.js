@@ -63,7 +63,7 @@ var B="0.0.52",_=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
                 <animateMotion dur="${V.toFixed(2)}s" begin="${U.toFixed(2)}s" repeatCount="indefinite" ${ee}>
                   <mpath href="#${W}"></mpath>
                 </animateMotion>
-              </circle>`}).join(""):"";return`<g class="flow-edge" style="${G}"><path id="${W}" class="flow-path-helper" d="M ${s.x} ${s.y} L ${d.x} ${d.y}"></path><line class="flow-line ${f} ${a.linePattern}" style="${Z}" x1="${s.x}" y1="${s.y}" x2="${d.x}" y2="${d.y}">${X}</line>${J}${Y}${K}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let r=this.normalizeConfig(this._config??H.getStubConfig()),a=this.fitNodesToCard(r.nodes);e.innerHTML=`
+              </circle>`}).join(""):"";return`<g class="flow-edge" style="${G}"><path id="${W}" class="flow-path-helper" d="M ${s.x} ${s.y} L ${d.x} ${d.y}"></path><line class="flow-line ${f} ${a.linePattern}" style="${Z}" x1="${s.x}" y1="${s.y}" x2="${d.x}" y2="${d.y}">${X}</line>${J}${Y}${K}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let r=this.normalizeConfig(this._config??H.getStubConfig()),a=this.fitNodesToCard(r.nodes),t=this.getFlowFrameSettings(a);e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -79,8 +79,8 @@ var B="0.0.52",_=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           --flow-annotation-color: ${r.flowStyle.textColor};
           --flow-annotation-size: ${r.flowStyle.textSize}px;
           --flow-annotation-stroke: ${r.flowStyle.textOutline}px;
-          --flow-frame-min-height: ${frame.minHeight}px;
-          --flow-frame-aspect: ${frame.aspect.toFixed(3)};
+          --flow-frame-min-height: ${t.minHeight}px;
+          --flow-frame-aspect: ${t.aspect.toFixed(3)};
           --pv-card-node-bg: rgba(255, 255, 255, 0.08);
 
           background: var(--pv-card-bg);
@@ -639,7 +639,7 @@ var B="0.0.52",_=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
         ${this.renderSummary(r.nodes)}
         <div class="flow-wrap">
           ${this.renderLinks(a,r.links,r.flowStyle)}
-          ${a.map(t=>this.renderNode(t)).join("")}
+          ${a.map(o=>this.renderNode(o)).join("")}
         </div>
         <div class="card-version">v${this.safeText(B)}</div>
       </ha-card>
