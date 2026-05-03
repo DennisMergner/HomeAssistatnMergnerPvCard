@@ -3079,16 +3079,14 @@ class MergnerPvCardEditor extends HTMLElement {
         .layout-editor-node-content {
           position: absolute;
           inset: 0;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-end;
-          padding: 0 4px 6px;
-          box-sizing: border-box;
           z-index: 1;
         }
 
         .layout-editor-node-media {
+          position: absolute;
+          left: 50%;
+          top: calc(50% - clamp(16px, 34cqw, 48px) / 2 - 2px);
+          transform: translateX(-50%);
           width: clamp(16px, 34cqw, 48px);
           height: clamp(16px, 34cqw, 48px);
           border-radius: 50%;
@@ -3102,14 +3100,18 @@ class MergnerPvCardEditor extends HTMLElement {
         }
 
         .layout-editor-node-label {
-          max-width: 85%;
+          position: absolute;
+          left: 50%;
+          bottom: clamp(2px, 3cqw, 6px);
+          transform: translateX(-50%);
+          max-width: calc(100% - 8px);
           font-size: clamp(6px, 8cqw, 11px);
           line-height: 1;
           text-align: center;
           color: #f5fbfb;
           background: rgba(0, 0, 0, 0.52);
-          padding: 1px 4px;
-          border-radius: 4px;
+          padding: clamp(1px, 1.5cqw, 3px) clamp(2px, 3cqw, 4px);
+          border-radius: 3px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
