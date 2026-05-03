@@ -45,6 +45,10 @@ type FlowNode = {
   tertiaryLabel?: string;
   tertiaryUnit?: string;
   batteryRingThickness?: number;
+  labelGap?: number;
+  statsGap?: number;
+  headerFontScale?: number;
+  showLabelBackground?: boolean;
 };
 
 type FlowLink = {
@@ -236,6 +240,27 @@ class MergnerPvCard extends HTMLElement {
       return 7;
     }
     return Math.max(4, Math.min(16, value));
+  }
+
+  private clampNodeLabelGap(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 6;
+    }
+    return Math.max(0, Math.min(24, value));
+  }
+
+  private clampNodeStatsGap(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 6;
+    }
+    return Math.max(0, Math.min(28, value));
+  }
+
+  private clampNodeHeaderFontScale(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 1;
+    }
+    return Math.max(0.7, Math.min(1.35, value));
   }
 
   private sanitizeHexColor(input: unknown, fallback: string): string {
@@ -554,7 +579,12 @@ class MergnerPvCard extends HTMLElement {
         role: node.role ?? "custom",
         size: this.clampNodeSize(Number(node.size ?? 120)),
         x: this.clampPercent(Number(node.x)),
-        y: this.clampPercent(Number(node.y))
+        y: this.clampPercent(Number(node.y)),
+        batteryRingThickness: this.clampBatteryRingThickness(Number(node.batteryRingThickness ?? 7)),
+        labelGap: this.clampNodeLabelGap(Number(node.labelGap ?? 6)),
+        statsGap: this.clampNodeStatsGap(Number(node.statsGap ?? 6)),
+        headerFontScale: this.clampNodeHeaderFontScale(Number(node.headerFontScale ?? 1)),
+        showLabelBackground: node.showLabelBackground !== false
       }));
 
       const links = (config.links ?? []).filter((link) =>
@@ -625,9 +655,13 @@ class MergnerPvCard extends HTMLElement {
     const showPrimaryInBottom = role !== "battery" || batteryLevel === undefined;
     const batteryColor = batteryLevel === undefined ? "#6edb7a" : this.getBatteryRingColor(batteryLevel);
     const batteryRingThickness = this.clampBatteryRingThickness(Number(node.batteryRingThickness ?? 7));
+    const labelGap = this.clampNodeLabelGap(Number(node.labelGap ?? 6));
+    const statsGap = this.clampNodeStatsGap(Number(node.statsGap ?? 6));
+    const headerFontScale = this.clampNodeHeaderFontScale(Number(node.headerFontScale ?? 1));
+    const showLabelBackground = node.showLabelBackground !== false;
     const batteryStyle = batteryLevel === undefined
-      ? ` --battery-ring-thickness:${batteryRingThickness}px;`
-      : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor}; --battery-ring-thickness:${batteryRingThickness}px;`;
+      ? ` --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale};`
+      : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor}; --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale};`;
     const isLowBattery = role === "battery" && batteryLevel !== undefined && batteryLevel <= 10;
     const filteredExtraMetrics =
       role === "battery" && batteryLevel !== undefined
@@ -658,7 +692,7 @@ class MergnerPvCard extends HTMLElement {
         : "";
 
     return `
-      <article class="node node-${role} ${batteryStateClass} ${isLowBattery ? "battery-low" : ""}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;${batteryStyle}">
+      <article class="node node-${role} ${batteryStateClass} ${isLowBattery ? "battery-low" : ""} ${showLabelBackground ? "" : "node-plain-labels"}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;${batteryStyle}">
         <div class="node-header">
           <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
           <div class="node-label node-chip">${safeName}</div>
@@ -1228,7 +1262,7 @@ class MergnerPvCard extends HTMLElement {
         .node-header {
           position: absolute;
           left: 50%;
-          top: -6px;
+          top: calc(var(--node-label-gap, 6px) * -1);
           transform: translate(-50%, -100%);
           display: flex;
           flex-direction: column;
@@ -1396,7 +1430,7 @@ class MergnerPvCard extends HTMLElement {
         }
 
         .node-label {
-          font-size: calc(0.74rem * var(--node-text-scale, 1));
+          font-size: calc(0.74rem * var(--node-text-scale, 1) * var(--node-header-font-scale, 1));
           font-weight: 500;
           max-width: 190px;
           white-space: nowrap;
@@ -1406,7 +1440,7 @@ class MergnerPvCard extends HTMLElement {
 
         .node-kicker {
           color: var(--pv-card-muted);
-          font-size: calc(0.55rem * var(--node-text-scale, 1));
+          font-size: calc(0.55rem * var(--node-text-scale, 1) * var(--node-header-font-scale, 1));
           font-weight: 400;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -1435,7 +1469,7 @@ class MergnerPvCard extends HTMLElement {
         .node-stats {
           position: absolute;
           left: 50%;
-          top: calc(100% + 6px);
+          top: calc(100% + var(--node-stats-gap, 6px));
           transform: translateX(-50%);
           display: grid;
           gap: 4px;
@@ -1445,6 +1479,14 @@ class MergnerPvCard extends HTMLElement {
           border-radius: 12px;
           padding: 8px 10px;
           backdrop-filter: blur(4px);
+        }
+
+        .node.node-plain-labels .node-header .node-chip {
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+          padding: 0;
         }
 
         .node-stat {
@@ -1535,6 +1577,27 @@ class MergnerPvCardEditor extends HTMLElement {
     return Math.max(4, Math.min(16, Math.round(value)));
   }
 
+  private clampEditorLabelGap(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 6;
+    }
+    return Math.max(0, Math.min(24, Math.round(value)));
+  }
+
+  private clampEditorStatsGap(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 6;
+    }
+    return Math.max(0, Math.min(28, Math.round(value)));
+  }
+
+  private clampEditorHeaderFontScale(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 1;
+    }
+    return Math.max(0.7, Math.min(1.35, Number(value.toFixed(2))));
+  }
+
   private clampFlowSetting(value: number, min: number, max: number, fallback: number): number {
     if (!Number.isFinite(value)) {
       return fallback;
@@ -1621,7 +1684,11 @@ class MergnerPvCardEditor extends HTMLElement {
       x: this.clampEditorPercent(Number(node.x)),
       y: this.clampEditorPercent(Number(node.y)),
       size: this.clampEditorNodeSize(Number(node.size ?? 120)),
-      batteryRingThickness: this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7))
+      batteryRingThickness: this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7)),
+      labelGap: this.clampEditorLabelGap(Number(node.labelGap ?? 6)),
+      statsGap: this.clampEditorStatsGap(Number(node.statsGap ?? 6)),
+      headerFontScale: this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1)),
+      showLabelBackground: node.showLabelBackground !== false
       };
       const clampedPosition = this.clampNodePosition(normalizedNode, normalizedNode.x, normalizedNode.y);
       return {
@@ -1689,7 +1756,11 @@ class MergnerPvCardEditor extends HTMLElement {
       ...mergedNode,
       ...clampedPosition,
       size: this.clampEditorNodeSize(Number(mergedNode.size ?? 120)),
-      batteryRingThickness: this.clampEditorBatteryRingThickness(Number(mergedNode.batteryRingThickness ?? 7))
+      batteryRingThickness: this.clampEditorBatteryRingThickness(Number(mergedNode.batteryRingThickness ?? 7)),
+      labelGap: this.clampEditorLabelGap(Number(mergedNode.labelGap ?? 6)),
+      statsGap: this.clampEditorStatsGap(Number(mergedNode.statsGap ?? 6)),
+      headerFontScale: this.clampEditorHeaderFontScale(Number(mergedNode.headerFontScale ?? 1)),
+      showLabelBackground: mergedNode.showLabelBackground !== false
     };
     this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
   }
@@ -2101,6 +2172,22 @@ class MergnerPvCardEditor extends HTMLElement {
                 <input data-field="batteryRingThickness" type="number" min="4" max="16" step="1" value="${this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7))}" />
               </label>
               ` : ""}
+              <label>
+                <span>Label distance above</span>
+                <input data-field="labelGap" type="number" min="0" max="24" step="1" value="${this.clampEditorLabelGap(Number(node.labelGap ?? 6))}" />
+              </label>
+              <label>
+                <span>Stats distance below</span>
+                <input data-field="statsGap" type="number" min="0" max="28" step="1" value="${this.clampEditorStatsGap(Number(node.statsGap ?? 6))}" />
+              </label>
+              <label>
+                <span>Header font scale</span>
+                <input data-field="headerFontScale" type="number" min="0.7" max="1.35" step="0.05" value="${this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1)).toFixed(2)}" />
+              </label>
+              <label class="inline-toggle">
+                <span>Label background</span>
+                <span class="inline-toggle-row"><input data-field="showLabelBackground" type="checkbox" ${node.showLabelBackground !== false ? "checked" : ""} />Show label chips</span>
+              </label>
             </div>
             <div class="image-tools">
               <label class="upload-field">
@@ -2439,7 +2526,13 @@ class MergnerPvCardEditor extends HTMLElement {
       row.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input[data-field], select[data-field]").forEach((input) => {
         input.addEventListener("change", () => {
           const field = input.dataset.field as keyof FlowNode;
-          const value = input instanceof HTMLInputElement && input.type === "number" ? Number(input.value) : input.value;
+          const value = input instanceof HTMLInputElement
+            ? (input.type === "number"
+              ? Number(input.value)
+              : input.type === "checkbox"
+                ? input.checked
+                : input.value)
+            : input.value;
           this.updateNode(nodes, links, index, { [field]: value } as Partial<FlowNode>);
         });
       });
