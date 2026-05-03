@@ -44,6 +44,7 @@ type FlowNode = {
   tertiaryEntity?: string;
   tertiaryLabel?: string;
   tertiaryUnit?: string;
+  batteryRingThickness?: number;
 };
 
 type FlowLink = {
@@ -228,6 +229,13 @@ class MergnerPvCard extends HTMLElement {
       return 120;
     }
     return Math.max(40, Math.min(320, value));
+  }
+
+  private clampBatteryRingThickness(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 7;
+    }
+    return Math.max(4, Math.min(16, value));
   }
 
   private sanitizeHexColor(input: unknown, fallback: string): string {
@@ -616,7 +624,15 @@ class MergnerPvCard extends HTMLElement {
     const media = `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
     const showPrimaryInBottom = role !== "battery" || batteryLevel === undefined;
     const batteryColor = batteryLevel === undefined ? "#6edb7a" : this.getBatteryRingColor(batteryLevel);
-    const batteryStyle = batteryLevel === undefined ? "" : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor};`;
+    const batteryRingThickness = this.clampBatteryRingThickness(Number(node.batteryRingThickness ?? 7));
+    const batteryStyle = batteryLevel === undefined
+      ? ` --battery-ring-thickness:${batteryRingThickness}px;`
+      : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor}; --battery-ring-thickness:${batteryRingThickness}px;`;
+    const isLowBattery = role === "battery" && batteryLevel !== undefined && batteryLevel <= 10;
+    const filteredExtraMetrics =
+      role === "battery" && batteryLevel !== undefined
+        ? extraMetrics.filter((metric) => !(metric.unit === "%" || /soc|state of charge|akku|charge|level/i.test(metric.label)))
+        : extraMetrics;
     const batteryStateClass =
       role === "battery" && primaryMetric && !Number.isNaN(primaryMetric.numericValue)
         ? primaryMetric.numericValue > 0
@@ -625,7 +641,7 @@ class MergnerPvCard extends HTMLElement {
             ? "is-discharging"
             : "is-idle"
         : "";
-    const extraMetricMarkup = extraMetrics
+    const extraMetricMarkup = filteredExtraMetrics
       .map(
         (metric) => `
           <div class="node-stat">
@@ -642,7 +658,7 @@ class MergnerPvCard extends HTMLElement {
         : "";
 
     return `
-      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;${batteryStyle}">
+      <article class="node node-${role} ${batteryStateClass} ${isLowBattery ? "battery-low" : ""}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;${batteryStyle}">
         <div class="node-header">
           <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
           <div class="node-label node-chip">${safeName}</div>
@@ -1201,28 +1217,32 @@ class MergnerPvCard extends HTMLElement {
 
         .node {
           width: var(--node-size);
+          aspect-ratio: 1 / 1;
           max-width: none;
           position: absolute;
           transform: translate(-50%, -50%);
           text-align: center;
           z-index: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
         }
 
         .node-header {
+          position: absolute;
+          left: 50%;
+          top: -6px;
+          transform: translate(-50%, -100%);
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 2px;
-          margin-bottom: 4px;
-          max-width: 120%;
+          z-index: 6;
           width: max-content;
+          max-width: min(170%, 210px);
+          pointer-events: none;
         }
 
         .node-orb {
           width: 100%;
+          height: 100%;
           aspect-ratio: 1 / 1;
           padding: 0;
           display: grid;
@@ -1257,9 +1277,39 @@ class MergnerPvCard extends HTMLElement {
           z-index: 2;
           transform: rotate(-90deg);
           background: conic-gradient(var(--battery-color, #6edb7a) calc(var(--battery-level, 0) * 1%), rgba(255, 255, 255, 0.16) 0);
-          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
-          mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
+          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--battery-ring-thickness, 7px)), #000 calc(100% - var(--battery-ring-thickness, 7px)));
+          mask: radial-gradient(farthest-side, transparent calc(100% - var(--battery-ring-thickness, 7px)), #000 calc(100% - var(--battery-ring-thickness, 7px)));
           filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.16));
+        }
+
+        @keyframes batteryLowPulseRing {
+          0% {
+            opacity: 0.88;
+            transform: rotate(-90deg) scale(1);
+          }
+          50% {
+            opacity: 0.46;
+            transform: rotate(-90deg) scale(1.02);
+          }
+          100% {
+            opacity: 0.88;
+            transform: rotate(-90deg) scale(1);
+          }
+        }
+
+        @keyframes batteryLowPulseCenter {
+          0% {
+            opacity: 0.95;
+            transform: translate(-50%, -50%) scale(1);
+          }
+          50% {
+            opacity: 0.62;
+            transform: translate(-50%, -50%) scale(1.03);
+          }
+          100% {
+            opacity: 0.95;
+            transform: translate(-50%, -50%) scale(1);
+          }
         }
 
         .node-overlay {
@@ -1290,6 +1340,14 @@ class MergnerPvCard extends HTMLElement {
           border: 1px solid rgba(255, 255, 255, 0.2);
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
           line-height: 1.1;
+        }
+
+        .node-battery.battery-low .battery-ring {
+          animation: batteryLowPulseRing 2.8s ease-in-out infinite;
+        }
+
+        .node-battery.battery-low .battery-center-percent {
+          animation: batteryLowPulseCenter 2.8s ease-in-out infinite;
         }
 
         .node-bottom-info {
@@ -1338,14 +1396,17 @@ class MergnerPvCard extends HTMLElement {
         }
 
         .node-label {
-          font-size: calc(0.82rem * var(--node-text-scale, 1));
+          font-size: calc(0.74rem * var(--node-text-scale, 1));
           font-weight: 500;
-          max-width: 120px;
+          max-width: 190px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         .node-kicker {
           color: var(--pv-card-muted);
-          font-size: calc(0.62rem * var(--node-text-scale, 1));
+          font-size: calc(0.55rem * var(--node-text-scale, 1));
           font-weight: 400;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -1363,15 +1424,19 @@ class MergnerPvCard extends HTMLElement {
         }
 
         .node-chip {
-          background: rgba(0, 0, 0, 0.52);
+          background: rgba(0, 0, 0, 0.45);
           color: #ffffff;
           border-radius: 8px;
-          padding: calc(2px * var(--node-text-scale, 1)) calc(7px * var(--node-text-scale, 1));
+          padding: calc(1.6px * var(--node-text-scale, 1)) calc(6px * var(--node-text-scale, 1));
           line-height: 1.2;
+          border: 1px solid rgba(255, 255, 255, 0.14);
         }
 
         .node-stats {
-          margin-top: 8px;
+          position: absolute;
+          left: 50%;
+          top: calc(100% + 6px);
+          transform: translateX(-50%);
           display: grid;
           gap: 4px;
           text-align: left;
@@ -1411,6 +1476,20 @@ class MergnerPvCard extends HTMLElement {
             width: min(58vw, var(--node-size));
             aspect-ratio: 1 / 1;
           }
+
+          .node-header {
+            top: -4px;
+            max-width: min(180%, 160px);
+          }
+
+          .node-label {
+            font-size: calc(0.68rem * var(--node-text-scale, 1));
+            max-width: 150px;
+          }
+
+          .node-kicker {
+            font-size: calc(0.5rem * var(--node-text-scale, 1));
+          }
         }
       </style>
 
@@ -1447,6 +1526,13 @@ class MergnerPvCardEditor extends HTMLElement {
       return 120;
     }
     return Math.max(40, Math.min(320, value));
+  }
+
+  private clampEditorBatteryRingThickness(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 7;
+    }
+    return Math.max(4, Math.min(16, Math.round(value)));
   }
 
   private clampFlowSetting(value: number, min: number, max: number, fallback: number): number {
@@ -1534,7 +1620,8 @@ class MergnerPvCardEditor extends HTMLElement {
       role: node.role ?? "custom",
       x: this.clampEditorPercent(Number(node.x)),
       y: this.clampEditorPercent(Number(node.y)),
-      size: this.clampEditorNodeSize(Number(node.size ?? 120))
+      size: this.clampEditorNodeSize(Number(node.size ?? 120)),
+      batteryRingThickness: this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7))
       };
       const clampedPosition = this.clampNodePosition(normalizedNode, normalizedNode.x, normalizedNode.y);
       return {
@@ -1601,7 +1688,8 @@ class MergnerPvCardEditor extends HTMLElement {
     nextNodes[index] = {
       ...mergedNode,
       ...clampedPosition,
-      size: this.clampEditorNodeSize(Number(mergedNode.size ?? 120))
+      size: this.clampEditorNodeSize(Number(mergedNode.size ?? 120)),
+      batteryRingThickness: this.clampEditorBatteryRingThickness(Number(mergedNode.batteryRingThickness ?? 7))
     };
     this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
   }
@@ -2007,6 +2095,12 @@ class MergnerPvCardEditor extends HTMLElement {
                 <span>Size (px)</span>
                 <input data-field="size" type="number" min="40" max="320" value="${Math.round(node.size ?? 120)}" />
               </label>
+              ${(node.role ?? "custom") === "battery" ? `
+              <label>
+                <span>Battery ring thickness</span>
+                <input data-field="batteryRingThickness" type="number" min="4" max="16" step="1" value="${this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7))}" />
+              </label>
+              ` : ""}
             </div>
             <div class="image-tools">
               <label class="upload-field">
