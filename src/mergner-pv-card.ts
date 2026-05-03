@@ -1486,9 +1486,8 @@ class MergnerPvCardEditor extends HTMLElement {
         opt.hidden = false;
         return;
       }
-      const name = (opt.querySelector(".picker-option-name")?.textContent ?? "").toLowerCase();
-      const id = (opt.dataset.value ?? "").toLowerCase();
-      opt.hidden = lower.length > 0 && !name.includes(lower) && !id.includes(lower);
+      const text = (opt.textContent ?? "").toLowerCase();
+      opt.hidden = lower.length > 0 && !text.includes(lower);
     });
 
     picker.querySelectorAll<HTMLElement>(".picker-group").forEach((group) => {
@@ -2008,11 +2007,14 @@ class MergnerPvCardEditor extends HTMLElement {
       if (searchInput) {
         setTimeout(() => searchInput.focus(), 0);
         this.applyPickerFilter(picker, searchInput.value);
-        searchInput.addEventListener("input", () => {
+        const onSearchUpdate = () => {
           const term = searchInput.value;
           this._entitySearchTerms.set(pickerId, term);
           this.applyPickerFilter(picker, term);
-        });
+        };
+        searchInput.addEventListener("input", onSearchUpdate);
+        searchInput.addEventListener("search", onSearchUpdate);
+        searchInput.addEventListener("keyup", onSearchUpdate);
 
         searchInput.addEventListener("keydown", (event) => {
           if (event.key === "Escape") {
@@ -2608,7 +2610,9 @@ class MergnerPvCardEditor extends HTMLElement {
           position: absolute;
           top: calc(100% + 4px);
           left: 0;
-          right: 0;
+          right: auto;
+          width: max(100%, 360px);
+          max-width: min(560px, calc(100vw - 48px));
           z-index: 999;
           background: var(--card-background-color, #1c1c1c);
           border: 1px solid var(--primary-color, #03a9f4);
@@ -2820,7 +2824,7 @@ class MergnerPvCardEditor extends HTMLElement {
           }
 
           .metric-grid {
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: 1fr;
           }
 
           .image-tools {
