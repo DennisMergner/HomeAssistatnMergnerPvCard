@@ -3035,6 +3035,7 @@ class MergnerPvCardEditor extends HTMLElement {
           transform: translate(-50%, -50%);
           width: var(--layout-node-size, 18%);
           aspect-ratio: 1 / 1;
+          container-type: size;
         }
 
         .layout-editor-node-wrapper:active {
@@ -3048,17 +3049,15 @@ class MergnerPvCardEditor extends HTMLElement {
         .layout-editor-node-inner {
           width: 100%;
           height: 100%;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: flex-end;
-          padding: 0 6px 8px;
-          box-sizing: border-box;
+          aspect-ratio: 1 / 1;
           position: relative;
           border-radius: 50%;
           background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
           border: 1px solid rgba(255, 255, 255, 0.16);
           overflow: hidden;
+          display: grid;
+          place-items: center;
+          container-type: size;
         }
 
         .layout-editor-node-inner.has-image {
@@ -3078,13 +3077,15 @@ class MergnerPvCardEditor extends HTMLElement {
         }
 
         .layout-editor-node-content {
-          position: relative;
-          z-index: 1;
+          position: absolute;
+          inset: 0;
           display: flex;
           flex-direction: column;
           align-items: center;
-          width: 100%;
-          gap: 3px;
+          justify-content: flex-end;
+          padding: 0 4px 6px;
+          box-sizing: border-box;
+          z-index: 1;
         }
 
         .layout-editor-node-media {
@@ -3096,21 +3097,23 @@ class MergnerPvCardEditor extends HTMLElement {
           background: rgba(255, 255, 255, 0.12);
           color: #fff;
           font-weight: 700;
-          font-size: clamp(8px, 12cqw, 16px);
+          font-size: clamp(8px, 12cqw, 14px);
+          flex-shrink: 0;
         }
 
         .layout-editor-node-label {
-          max-width: 90%;
-          font-size: clamp(7px, 9cqw, 13px);
-          line-height: 1.1;
+          max-width: 85%;
+          font-size: clamp(6px, 8cqw, 11px);
+          line-height: 1;
           text-align: center;
           color: #f5fbfb;
-          background: rgba(0, 0, 0, 0.48);
-          padding: 2px 6px;
-          border-radius: 6px;
+          background: rgba(0, 0, 0, 0.52);
+          padding: 1px 4px;
+          border-radius: 4px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          flex-shrink: 0;
         }
 
         h4 {
