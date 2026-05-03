@@ -49,6 +49,10 @@ type FlowNode = {
   statsGap?: number;
   headerFontScale?: number;
   showLabelBackground?: boolean;
+  centerValue?: boolean;
+  centerValueOffsetX?: number;
+  centerValueOffsetY?: number;
+  centerValueScale?: number;
 };
 
 type FlowLink = {
@@ -261,6 +265,20 @@ class MergnerPvCard extends HTMLElement {
       return 1;
     }
     return Math.max(0.4, Math.min(2.2, value));
+  }
+
+  private clampCenterValueOffset(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(-80, Math.min(80, value));
+  }
+
+  private clampCenterValueScale(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 1;
+    }
+    return Math.max(0.5, Math.min(2, value));
   }
 
   private sanitizeHexColor(input: unknown, fallback: string): string {
@@ -584,7 +602,11 @@ class MergnerPvCard extends HTMLElement {
         labelGap: this.clampNodeLabelGap(Number(node.labelGap ?? 6)),
         statsGap: this.clampNodeStatsGap(Number(node.statsGap ?? 6)),
         headerFontScale: this.clampNodeHeaderFontScale(Number(node.headerFontScale ?? 1)),
-        showLabelBackground: node.showLabelBackground !== false
+        showLabelBackground: node.showLabelBackground !== false,
+        centerValue: node.centerValue ?? node.role === "battery",
+        centerValueOffsetX: this.clampCenterValueOffset(Number(node.centerValueOffsetX ?? 0)),
+        centerValueOffsetY: this.clampCenterValueOffset(Number(node.centerValueOffsetY ?? 0)),
+        centerValueScale: this.clampCenterValueScale(Number(node.centerValueScale ?? 1))
       }));
 
       const links = (config.links ?? []).filter((link) =>
@@ -659,9 +681,13 @@ class MergnerPvCard extends HTMLElement {
     const statsGap = this.clampNodeStatsGap(Number(node.statsGap ?? 6));
     const headerFontScale = this.clampNodeHeaderFontScale(Number(node.headerFontScale ?? 1));
     const showLabelBackground = node.showLabelBackground !== false;
+    const centerValueEnabled = (node.centerValue ?? role === "battery") === true;
+    const centerValueOffsetX = this.clampCenterValueOffset(Number(node.centerValueOffsetX ?? 0));
+    const centerValueOffsetY = this.clampCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
+    const centerValueScale = this.clampCenterValueScale(Number(node.centerValueScale ?? 1));
     const batteryStyle = batteryLevel === undefined
-      ? ` --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale};`
-      : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor}; --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale};`;
+      ? ` --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}px; --node-center-offset-y:${centerValueOffsetY}px; --node-center-scale:${centerValueScale};`
+      : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor}; --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}px; --node-center-offset-y:${centerValueOffsetY}px; --node-center-scale:${centerValueScale};`;
     const isLowBattery = role === "battery" && batteryLevel !== undefined && batteryLevel <= 10;
     const filteredExtraMetrics =
       role === "battery" && batteryLevel !== undefined
@@ -686,9 +712,27 @@ class MergnerPvCard extends HTMLElement {
       )
       .join("");
     const batteryRingMarkup = batteryLevel === undefined ? "" : `<div class="battery-ring" aria-hidden="true"></div>`;
-    const batteryCenterMetric =
+    const socMetric = metrics.find(
+      (metric) => metric.unit === "%" || /soc|state of charge|akku|charge|level/i.test(metric.label)
+    );
+    const centerMetricValue =
       role === "battery" && batteryLevel !== undefined
-        ? `<div class="battery-center-percent" aria-label="Battery level ${batteryLevel}%">${batteryLevel}%</div>`
+        ? `${batteryLevel}%`
+        : primaryMetric && !this.isEmptyState(primaryMetric.value)
+          ? this.formatMetricValue(primaryMetric.value, primaryMetric.unit)
+          : "";
+    const centerMetricLabel =
+      role === "battery" && socMetric
+        ? socMetric.label
+        : primaryMetric?.label ?? "";
+    const centerMetricMarkup =
+      centerValueEnabled && centerMetricValue
+        ? `
+          <div class="node-center-metric" aria-label="Center metric">
+            <div class="node-center-value">${this.safeText(centerMetricValue)}</div>
+            ${centerMetricLabel ? `<div class="node-center-label">${this.safeText(centerMetricLabel)}</div>` : ""}
+          </div>
+        `
         : "";
 
     return `
@@ -701,11 +745,11 @@ class MergnerPvCard extends HTMLElement {
           ${batteryRingMarkup}
           ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
           <div class="node-overlay">
-            ${batteryCenterMetric}
+            ${centerMetricMarkup}
             ${image ? "" : `<div class="node-media">${media}</div>`}
             <div class="node-bottom-info">
-              ${showPrimaryInBottom && primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
-              ${showPrimaryInBottom && primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
+              ${showPrimaryInBottom && !centerValueEnabled && primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
+              ${showPrimaryInBottom && !centerValueEnabled && primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
             </div>
           </div>
         </div>
@@ -1360,28 +1404,41 @@ class MergnerPvCard extends HTMLElement {
           box-sizing: border-box;
         }
 
-        .battery-center-percent {
+        .node-center-metric {
           position: absolute;
           left: 50%;
           top: 50%;
-          transform: translate(-50%, -50%);
+          transform: translate(calc(-50% + var(--node-center-offset-x, 0px)), calc(-50% + var(--node-center-offset-y, 0px))) scale(var(--node-center-scale, 1));
           z-index: 4;
-          font-size: clamp(10px, calc(13.5cqw), 28px);
-          font-weight: 700;
-          color: #ffffff;
           padding: 2px 7px;
           border-radius: 8px;
           background: rgba(0, 0, 0, 0.38);
           border: 1px solid rgba(255, 255, 255, 0.2);
           text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
           line-height: 1.1;
+          display: grid;
+          justify-items: center;
+          gap: 2px;
+          transform-origin: center;
+        }
+
+        .node-center-value {
+          font-size: clamp(10px, calc(13.5cqw), 28px);
+          font-weight: 700;
+          color: #ffffff;
+        }
+
+        .node-center-label {
+          font-size: clamp(7px, calc(6.2cqw), 16px);
+          color: var(--pv-card-muted);
+          font-weight: 500;
         }
 
         .node-battery.battery-low .battery-ring {
           animation: batteryLowPulseRing 2.8s ease-in-out infinite;
         }
 
-        .node-battery.battery-low .battery-center-percent {
+        .node-battery.battery-low .node-center-metric {
           animation: batteryLowPulseCenter 2.8s ease-in-out infinite;
         }
 
@@ -1594,6 +1651,20 @@ class MergnerPvCardEditor extends HTMLElement {
     return Math.max(0.4, Math.min(2.2, Number(value.toFixed(2))));
   }
 
+  private clampEditorCenterValueOffset(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 0;
+    }
+    return Math.max(-80, Math.min(80, Math.round(value)));
+  }
+
+  private clampEditorCenterValueScale(value: number): number {
+    if (!Number.isFinite(value)) {
+      return 1;
+    }
+    return Math.max(0.5, Math.min(2, Number(value.toFixed(2))));
+  }
+
   private clampFlowSetting(value: number, min: number, max: number, fallback: number): number {
     if (!Number.isFinite(value)) {
       return fallback;
@@ -1650,6 +1721,34 @@ class MergnerPvCardEditor extends HTMLElement {
     return diameterPercent / 2;
   }
 
+  private getZoomedNodeRadiusPercent(node: FlowNode, zoom: number): number {
+    const zoomFactor = Math.max(0.2, zoom / 100);
+    return this.getNodeRadiusPercent(node) * zoomFactor;
+  }
+
+  private clampNodePositionForZoom(node: FlowNode, x: number, y: number, zoom: number): Pick<FlowNode, "x" | "y"> {
+    const radius = this.getZoomedNodeRadiusPercent(node, zoom);
+    const min = Math.max(2, radius);
+    const max = Math.min(98, 100 - radius);
+    return {
+      x: Math.max(min, Math.min(max, this.clampEditorPercent(x))),
+      y: Math.max(min, Math.min(max, this.clampEditorPercent(y)))
+    };
+  }
+
+  private getProjectedLayoutNode(node: FlowNode, zoom: number): { x: number; y: number; sizePercent: number } {
+    const zoomFactor = Math.max(0.2, zoom / 100);
+    const sizePercent = Math.max(2.5, Math.min(58, this.getNodeRadiusPercent(node) * 2 * zoomFactor));
+    const radius = sizePercent / 2;
+    const projectedX = this.projectLayoutPosition(node.x, zoom);
+    const projectedY = this.projectLayoutPosition(node.y, zoom);
+    return {
+      x: Math.max(radius, Math.min(100 - radius, projectedX)),
+      y: Math.max(radius, Math.min(100 - radius, projectedY)),
+      sizePercent
+    };
+  }
+
   private clampNodePosition(node: FlowNode, x: number, y: number): Pick<FlowNode, "x" | "y"> {
     const radius = this.getNodeRadiusPercent(node);
     const min = Math.max(2, radius);
@@ -1684,7 +1783,11 @@ class MergnerPvCardEditor extends HTMLElement {
       labelGap: this.clampEditorLabelGap(Number(node.labelGap ?? 6)),
       statsGap: this.clampEditorStatsGap(Number(node.statsGap ?? 6)),
       headerFontScale: this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1)),
-      showLabelBackground: node.showLabelBackground !== false
+      showLabelBackground: node.showLabelBackground !== false,
+      centerValue: node.centerValue ?? (node.role === "battery"),
+      centerValueOffsetX: this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0)),
+      centerValueOffsetY: this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0)),
+      centerValueScale: this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1))
       };
       const clampedPosition = this.clampNodePosition(normalizedNode, normalizedNode.x, normalizedNode.y);
       return {
@@ -1756,7 +1859,11 @@ class MergnerPvCardEditor extends HTMLElement {
       labelGap: this.clampEditorLabelGap(Number(mergedNode.labelGap ?? 6)),
       statsGap: this.clampEditorStatsGap(Number(mergedNode.statsGap ?? 6)),
       headerFontScale: this.clampEditorHeaderFontScale(Number(mergedNode.headerFontScale ?? 1)),
-      showLabelBackground: mergedNode.showLabelBackground !== false
+      showLabelBackground: mergedNode.showLabelBackground !== false,
+      centerValue: mergedNode.centerValue ?? (mergedNode.role === "battery"),
+      centerValueOffsetX: this.clampEditorCenterValueOffset(Number(mergedNode.centerValueOffsetX ?? 0)),
+      centerValueOffsetY: this.clampEditorCenterValueOffset(Number(mergedNode.centerValueOffsetY ?? 0)),
+      centerValueScale: this.clampEditorCenterValueScale(Number(mergedNode.centerValueScale ?? 1))
     };
     this.emitConfig({ ...this.safeConfig, nodes: nextNodes, links });
   }
@@ -1956,20 +2063,18 @@ class MergnerPvCardEditor extends HTMLElement {
   }
 
   private renderLayoutCanvas(nodes: FlowNode[], links: FlowLink[]): string {
-    const lookup = new Map(nodes.map((node) => [node.id, node]));
     const effectiveZoom = this.getEffectiveLayoutZoom(nodes);
+    const projectedNodeMap = new Map<string, { x: number; y: number; sizePercent: number }>(
+      nodes.map((node) => [node.id, this.getProjectedLayoutNode(node, effectiveZoom)])
+    );
     const lines = links
       .map((link) => {
-        const from = lookup.get(link.from);
-        const to = lookup.get(link.to);
+        const from = projectedNodeMap.get(link.from);
+        const to = projectedNodeMap.get(link.to);
         if (!from || !to) {
           return "";
         }
-        const x1 = this.projectLayoutPosition(from.x, effectiveZoom);
-        const y1 = this.projectLayoutPosition(from.y, effectiveZoom);
-        const x2 = this.projectLayoutPosition(to.x, effectiveZoom);
-        const y2 = this.projectLayoutPosition(to.y, effectiveZoom);
-        return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`;
+        return `<line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}"></line>`;
       })
       .join("");
 
@@ -1977,10 +2082,10 @@ class MergnerPvCardEditor extends HTMLElement {
       .map((node, index) => {
         const image = node.image?.trim();
         const media = `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
-        const zoomFactor = effectiveZoom / 100;
-        const layoutSize = Math.max(24, Math.min(220, Math.round((node.size ?? 120) * zoomFactor)));
-        const projectedX = this.projectLayoutPosition(node.x, effectiveZoom);
-        const projectedY = this.projectLayoutPosition(node.y, effectiveZoom);
+        const projected = projectedNodeMap.get(node.id);
+        if (!projected) {
+          return "";
+        }
 
         return `
           <button
@@ -1988,7 +2093,7 @@ class MergnerPvCardEditor extends HTMLElement {
             data-action="drag-node"
             data-index="${index}"
             type="button"
-            style="--layout-node-size:${layoutSize}px; left:${projectedX}%; top:${projectedY}%;"
+            style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; left:${projected.x}%; top:${projected.y}%;"
             aria-label="Drag ${this.safeText(node.name)}"
           >
             ${image ? `<img class="layout-node-bg-image" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
@@ -2089,7 +2194,8 @@ class MergnerPvCardEditor extends HTMLElement {
     const yInCanvas = Math.max(yEdgePadding, Math.min(100 - yEdgePadding, ((event.clientY - rect.top) / rect.height) * 100));
     const x = this.unprojectLayoutPosition(xInCanvas, effectiveZoom);
     const y = this.unprojectLayoutPosition(yInCanvas, effectiveZoom);
-    this.updateNode(nodes, links, this._dragNodeIndex, { x: Number(x.toFixed(1)), y: Number(y.toFixed(1)) });
+    const clamped = this.clampNodePositionForZoom(activeNode, x, y, effectiveZoom);
+    this.updateNode(nodes, links, this._dragNodeIndex, { x: Number(clamped.x.toFixed(1)), y: Number(clamped.y.toFixed(1)) });
   };
 
   private handlePointerUp = (): void => {
@@ -2179,6 +2285,22 @@ class MergnerPvCardEditor extends HTMLElement {
               <label>
                 <span>Header font scale</span>
                 <input data-field="headerFontScale" type="number" min="0.4" max="2.2" step="0.05" value="${this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1)).toFixed(2)}" />
+              </label>
+              <label class="inline-toggle">
+                <span>Center value in orb</span>
+                <span class="inline-toggle-row"><input data-field="centerValue" type="checkbox" ${(node.centerValue ?? ((node.role ?? "custom") === "battery")) ? "checked" : ""} />Enable center metric</span>
+              </label>
+              <label>
+                <span>Center value offset X</span>
+                <input data-field="centerValueOffsetX" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0))}" />
+              </label>
+              <label>
+                <span>Center value offset Y</span>
+                <input data-field="centerValueOffsetY" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0))}" />
+              </label>
+              <label>
+                <span>Center value scale</span>
+                <input data-field="centerValueScale" type="number" min="0.5" max="2" step="0.05" value="${this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1)).toFixed(2)}" />
               </label>
               <label class="inline-toggle">
                 <span>Label background</span>
@@ -2789,8 +2911,8 @@ class MergnerPvCardEditor extends HTMLElement {
         .layout-node {
           position: absolute;
           transform: translate(-50%, -50%);
-          width: var(--layout-node-size, 90px);
-          min-height: var(--layout-node-size, 90px);
+          width: var(--layout-node-size, 18%);
+          min-height: var(--layout-node-size, 18%);
           aspect-ratio: 1 / 1;
           border-radius: 50%;
           padding: 0;
@@ -2802,6 +2924,7 @@ class MergnerPvCardEditor extends HTMLElement {
           cursor: grab;
           user-select: none;
           overflow: hidden;
+          container-type: size;
         }
 
         .layout-node.has-image {
@@ -2842,8 +2965,8 @@ class MergnerPvCardEditor extends HTMLElement {
         }
 
         .layout-node-media {
-          width: clamp(20px, calc(var(--layout-node-size, 90px) * 0.34), 42px);
-          height: clamp(20px, calc(var(--layout-node-size, 90px) * 0.34), 42px);
+          width: clamp(16px, 34cqw, 58px);
+          height: clamp(16px, 34cqw, 58px);
           border-radius: 50%;
           display: grid;
           place-items: center;
@@ -2855,7 +2978,7 @@ class MergnerPvCardEditor extends HTMLElement {
 
         .layout-node-label {
           max-width: 88%;
-          font-size: clamp(0.56rem, calc(var(--layout-node-size, 90px) * 0.012), 0.78rem);
+          font-size: clamp(8px, 9cqw, 14px);
           line-height: 1.2;
           text-align: center;
           color: #f5fbfb;
