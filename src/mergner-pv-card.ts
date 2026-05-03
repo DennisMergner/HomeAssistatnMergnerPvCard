@@ -2665,6 +2665,12 @@ class MergnerPvCardEditor extends HTMLElement {
           transition: background 0.1s;
         }
 
+        .picker-option[hidden],
+        .picker-group[hidden],
+        .picker-no-results[hidden] {
+          display: none !important;
+        }
+
         .picker-option:hover {
           background: rgba(255,255,255,0.06);
         }
