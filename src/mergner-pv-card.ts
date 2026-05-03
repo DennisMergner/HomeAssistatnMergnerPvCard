@@ -2134,6 +2134,14 @@ class MergnerPvCardEditor extends HTMLElement {
         const centerValueOffsetY = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
         const centerValueScale = this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1));
 
+        const previewValueEntity = node.entity?.trim() || "";
+        const previewRawState = previewValueEntity ? (this._hass?.states?.[previewValueEntity]?.state ?? "") : "";
+        const previewUnit = (node.unit?.trim() || (previewValueEntity ? this.getEntityUnit(previewValueEntity) : "")).trim();
+        const previewBottomValue = previewRawState
+          ? `${previewRawState}${previewUnit ? ` ${previewUnit}` : ""}`
+          : "";
+        const previewBottomLabel = node.entityLabel?.trim() || "";
+
         const mainEntity = role === "battery"
           ? (node.secondaryEntity?.trim() || node.entity?.trim() || "")
           : (node.entity?.trim() || "");
@@ -2159,6 +2167,14 @@ class MergnerPvCardEditor extends HTMLElement {
             </div>
           `
           : "";
+        const bottomInfoMarkup = !centerValueEnabled && previewBottomValue
+          ? `
+            <div class="layout-node-bottom-info">
+              <div class="layout-node-value layout-node-chip">${this.safeText(previewBottomValue)}</div>
+              ${previewBottomLabel ? `<div class="layout-node-value-label layout-node-chip">${this.safeText(previewBottomLabel)}</div>` : ""}
+            </div>
+          `
+          : "";
 
         return `
           <button
@@ -2174,6 +2190,7 @@ class MergnerPvCardEditor extends HTMLElement {
             <div class="layout-node-overlay ${image ? "with-image" : ""}">
               ${image ? "" : `<div class="layout-node-media">${media}</div>`}
               <div class="layout-node-label">${this.safeText(node.name)}</div>
+              ${bottomInfoMarkup}
             </div>
           </button>
         `;
@@ -3052,17 +3069,26 @@ class MergnerPvCardEditor extends HTMLElement {
           z-index: 1;
           width: 100%;
           height: 100%;
-          display: grid;
-          align-content: center;
-          justify-items: center;
-          gap: 6px;
-          padding: 10px 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 4px;
+          padding: 0 6px 8px;
           box-sizing: border-box;
         }
 
         .layout-node-overlay.with-image {
-          align-content: end;
           background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.6) 100%);
+        }
+
+        .layout-node-bottom-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          width: 100%;
+          z-index: 2;
         }
 
         .layout-center-metric {
@@ -3123,6 +3149,27 @@ class MergnerPvCardEditor extends HTMLElement {
           background: rgba(0, 0, 0, 0.45);
           padding: 2px 7px;
           border-radius: 8px;
+        }
+
+        .layout-node-value {
+          font-size: clamp(9px, calc(11.4cqw), 30px);
+          font-weight: 600;
+        }
+
+        .layout-node-value-label {
+          font-size: clamp(7px, calc(6.5cqw), 18px);
+          color: #acd2d3;
+          font-weight: 400;
+        }
+
+        .layout-node-chip {
+          background: rgba(0, 0, 0, 0.45);
+          color: #ffffff;
+          border-radius: 8px;
+          padding: clamp(1px, 1.3cqw, 4px) clamp(4px, 4.6cqw, 12px);
+          line-height: 1.2;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          white-space: nowrap;
         }
 
         h4 {
