@@ -1712,6 +1712,23 @@ class MergnerPvCardEditor extends HTMLElement {
     return Math.max(0.5, Math.min(2, Number(value.toFixed(2))));
   }
 
+  private editorRoleLabel(role: NodeRole): string {
+    switch (role) {
+      case "pv":
+        return "PV";
+      case "battery":
+        return "Batterie";
+      case "house":
+        return "Haus";
+      case "grid":
+        return "Netz";
+      case "inverter":
+        return "Wechselrichter";
+      default:
+        return "Custom";
+    }
+  }
+
   private clampFlowSetting(value: number, min: number, max: number, fallback: number): number {
     if (!Number.isFinite(value)) {
       return fallback;
@@ -2148,6 +2165,15 @@ class MergnerPvCardEditor extends HTMLElement {
           return "";
         }
         const role = node.role ?? "custom";
+        const labelGap = this.clampEditorLabelGap(Number(node.labelGap ?? 6));
+        const headerFontScale = this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1));
+        const centerValueOffsetX = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0));
+        const centerValueOffsetY = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
+        const centerValueScale = this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1));
+        const showLabelBackground = node.showLabelBackground !== false;
+        const centerValueEnabled = (node.centerValue ?? role === "battery") === true;
+        const centerMetricValue = role === "battery" ? "72%" : "4.2 kW";
+        const centerMetricLabel = role === "battery" ? "SOC" : "Leistung";
 
         return `
           <button
@@ -2155,14 +2181,23 @@ class MergnerPvCardEditor extends HTMLElement {
             data-action="drag-node"
             data-index="${index}"
             type="button"
-            style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; left:${projected.x}%; top:${projected.y}%; width: var(--layout-node-size); height: var(--layout-node-size);"
+            style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; --node-label-gap:${labelGap}cqw; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}cqw; --node-center-offset-y:${centerValueOffsetY}cqw; --node-center-scale:${centerValueScale}; left:${projected.x}%; top:${projected.y}%; width: var(--layout-node-size); height: var(--layout-node-size);"
             aria-label="Drag ${this.safeText(node.name)}"
           >
+            <div class="layout-editor-node-header ${showLabelBackground ? "" : "is-plain"}">
+              <div class="layout-editor-node-chip layout-editor-node-kicker">${this.safeText(this.editorRoleLabel(role))}</div>
+              <div class="layout-editor-node-chip layout-editor-node-name">${this.safeText(node.name)}</div>
+            </div>
             <div class="layout-editor-node-inner ${image ? "has-image" : ""}">
               ${image ? `<img class="layout-editor-node-bg" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
               <div class="layout-editor-node-content">
+                ${centerValueEnabled ? `
+                <div class="layout-editor-node-center-metric" aria-hidden="true">
+                  <div class="layout-editor-node-center-value">${this.safeText(centerMetricValue)}</div>
+                  <div class="layout-editor-node-center-label">${this.safeText(centerMetricLabel)}</div>
+                </div>
+                ` : ""}
                 ${image ? "" : `<div class="layout-editor-node-media">${media}</div>`}
-                <div class="layout-editor-node-label">${this.safeText(node.name)}</div>
               </div>
             </div>
           </button>
@@ -3060,6 +3095,53 @@ class MergnerPvCardEditor extends HTMLElement {
           container-type: size;
         }
 
+        .layout-editor-node-header {
+          position: absolute;
+          left: 50%;
+          top: calc(var(--node-label-gap, 6cqw) * -1);
+          transform: translate(-50%, -100%);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 2px;
+          z-index: 3;
+          width: max-content;
+          max-width: 180cqw;
+          pointer-events: none;
+        }
+
+        .layout-editor-node-chip {
+          background: rgba(0, 0, 0, 0.45);
+          color: #ffffff;
+          border-radius: 8px;
+          padding: clamp(1px, 1.3cqw, 4px) clamp(4px, 4.6cqw, 12px);
+          line-height: 1.2;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+          white-space: nowrap;
+          max-width: 180cqw;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .layout-editor-node-header.is-plain .layout-editor-node-chip {
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+          padding: 0;
+        }
+
+        .layout-editor-node-kicker {
+          font-size: clamp(6px, calc(7.6cqw * var(--node-header-font-scale, 1)), 14px);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+        }
+
+        .layout-editor-node-name {
+          font-size: clamp(7px, calc(8.9cqw * var(--node-header-font-scale, 1)), 18px);
+          font-weight: 700;
+        }
+
         .layout-editor-node-inner.has-image {
           background: transparent;
         }
@@ -3082,6 +3164,38 @@ class MergnerPvCardEditor extends HTMLElement {
           z-index: 1;
         }
 
+        .layout-editor-node-center-metric {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(calc(-50% + var(--node-center-offset-x, 0cqw)), calc(-50% + var(--node-center-offset-y, 0cqw))) scale(var(--node-center-scale, 1));
+          z-index: 4;
+          padding: clamp(1px, 1.8cqw, 4px) clamp(3px, 5cqw, 10px);
+          border-radius: 8px;
+          background: rgba(0, 0, 0, 0.38);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+          line-height: 1.1;
+          display: grid;
+          justify-items: center;
+          gap: clamp(1px, 1.2cqw, 3px);
+          transform-origin: center;
+          pointer-events: none;
+        }
+
+        .layout-editor-node-center-value {
+          font-size: clamp(10px, calc(13.5cqw), 28px);
+          font-weight: 700;
+          color: #ffffff;
+        }
+
+        .layout-editor-node-center-label {
+          font-size: clamp(6px, calc(7.2cqw), 15px);
+          color: #acd2d3;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
         .layout-editor-node-media {
           position: absolute;
           left: 50%;
@@ -3096,25 +3210,6 @@ class MergnerPvCardEditor extends HTMLElement {
           color: #fff;
           font-weight: 700;
           font-size: clamp(8px, 12cqw, 14px);
-          flex-shrink: 0;
-        }
-
-        .layout-editor-node-label {
-          position: absolute;
-          left: 50%;
-          bottom: clamp(2px, 3cqw, 6px);
-          transform: translateX(-50%);
-          max-width: calc(100% - 8px);
-          font-size: clamp(6px, 8cqw, 11px);
-          line-height: 1;
-          text-align: center;
-          color: #f5fbfb;
-          background: rgba(0, 0, 0, 0.52);
-          padding: clamp(1px, 1.5cqw, 3px) clamp(2px, 3cqw, 4px);
-          border-radius: 3px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
           flex-shrink: 0;
         }
 
