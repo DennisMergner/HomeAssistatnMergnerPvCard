@@ -703,6 +703,10 @@ class MergnerPvCard extends HTMLElement {
   }
 
   private renderNode(node: RenderFlowNode): string {
+    return this.getNodeArticleHTML(node, this.clampPercent(node.x), this.clampPercent(node.y));
+  }
+
+  private getNodeArticleHTML(node: RenderFlowNode, posX: string, posY: string): string {
     const role = this.getNodeRole(node);
     const metrics = this.getNodeMetrics(node);
     const primaryMetric = metrics[0];
@@ -775,7 +779,7 @@ class MergnerPvCard extends HTMLElement {
         : "";
 
     return `
-      <article class="node node-${role} ${batteryStateClass} ${isLowBattery ? "battery-low" : ""} ${showLabelBackground ? "" : "node-plain-labels"}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;${batteryStyle}">
+      <article class="node node-${role} ${batteryStateClass} ${isLowBattery ? "battery-low" : ""} ${showLabelBackground ? "" : "node-plain-labels"}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${posX}%; top:${posY}%;${batteryStyle}">
         <div class="node-header">
           <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
           <div class="node-label node-chip">${safeName}</div>
@@ -2122,76 +2126,37 @@ class MergnerPvCardEditor extends HTMLElement {
 
     const nodeMarkup = nodes
       .map((node, index) => {
-        const image = node.image?.trim();
-        const media = `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
         const projected = projectedNodeMap.get(node.id);
         if (!projected) {
           return "";
         }
-        const role = node.role ?? "custom";
-        const centerValueEnabled = (node.centerValue ?? role === "battery") === true;
-        const centerValueOffsetX = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0));
-        const centerValueOffsetY = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
-        const centerValueScale = this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1));
+        
+        // Convert FlowNode to RenderFlowNode for the shared rendering function
+        const renderNode: RenderFlowNode = {
+          ...node,
+          renderSize: projected.sizePercent,
+          x: projected.x,
+          y: projected.y,
+        };
+        
+        // Use the SAME article HTML as the live card
+        const articleHTML = this.getNodeArticleHTML(
+          renderNode,
+          this.clampPercent(projected.x),
+          this.clampPercent(projected.y)
+        );
 
-        const previewValueEntity = node.entity?.trim() || "";
-        const previewRawState = previewValueEntity ? (this._hass?.states?.[previewValueEntity]?.state ?? "") : "";
-        const previewUnit = (node.unit?.trim() || (previewValueEntity ? this.getEntityUnit(previewValueEntity) : "")).trim();
-        const previewBottomValue = previewRawState
-          ? `${previewRawState}${previewUnit ? ` ${previewUnit}` : ""}`
-          : "";
-        const previewBottomLabel = node.entityLabel?.trim() || "";
-
-        const mainEntity = role === "battery"
-          ? (node.secondaryEntity?.trim() || node.entity?.trim() || "")
-          : (node.entity?.trim() || "");
-        const rawState = mainEntity ? (this._hass?.states?.[mainEntity]?.state ?? "") : "";
-        const parsed = Number(rawState);
-        const isNumeric = Number.isFinite(parsed);
-        const unit = role === "battery"
-          ? "%"
-          : ((node.unit?.trim() || (mainEntity ? this.getEntityUnit(mainEntity) : "")).trim());
-        const centerValueText = role === "battery"
-          ? `${Math.max(0, Math.min(100, Math.round(isNumeric ? parsed : 50)))}%`
-          : (rawState
-            ? `${rawState}${unit ? ` ${unit}` : ""}`
-            : "0 W");
-        const centerLabelText = role === "battery"
-          ? (node.secondaryLabel?.trim() || "SOC")
-          : (node.entityLabel?.trim() || "");
-        const centerMarkup = centerValueEnabled
-          ? `
-            <div class="layout-center-metric" style="--node-center-offset-x:${centerValueOffsetX}px; --node-center-offset-y:${centerValueOffsetY}px; --node-center-scale:${centerValueScale};">
-              <div class="layout-center-value">${this.safeText(centerValueText)}</div>
-              ${centerLabelText ? `<div class="layout-center-label">${this.safeText(centerLabelText)}</div>` : ""}
-            </div>
-          `
-          : "";
-        const bottomInfoMarkup = !centerValueEnabled && previewBottomValue
-          ? `
-            <div class="layout-node-bottom-info">
-              <div class="layout-node-value layout-node-chip">${this.safeText(previewBottomValue)}</div>
-              ${previewBottomLabel ? `<div class="layout-node-value-label layout-node-chip">${this.safeText(previewBottomLabel)}</div>` : ""}
-            </div>
-          `
-          : "";
-
+        // Wrap in draggable button for editor context
         return `
           <button
-            class="layout-node ${image ? "has-image" : ""}"
+            class="layout-editor-node-wrapper"
             data-action="drag-node"
             data-index="${index}"
             type="button"
-            style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; left:${projected.x}%; top:${projected.y}%;"
+            style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; left:${projected.x}%; top:${projected.y}%; width: var(--layout-node-size); height: var(--layout-node-size);"
             aria-label="Drag ${this.safeText(node.name)}"
           >
-            ${image ? `<img class="layout-node-bg-image" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
-            ${centerMarkup}
-            <div class="layout-node-overlay ${image ? "with-image" : ""}">
-              ${image ? "" : `<div class="layout-node-media">${media}</div>`}
-              <div class="layout-node-label">${this.safeText(node.name)}</div>
-              ${bottomInfoMarkup}
-            </div>
+            ${articleHTML}
           </button>
         `;
       })
@@ -3047,6 +3012,29 @@ class MergnerPvCardEditor extends HTMLElement {
           user-select: none;
           overflow: hidden;
           container-type: size;
+        }
+
+        .layout-editor-node-wrapper {
+          position: absolute;
+          padding: 0;
+          border: none;
+          background: transparent;
+          cursor: grab;
+          user-select: none;
+          display: block;
+          overflow: visible;
+          z-index: 1;
+          transform: translate(-50%, -50%);
+          width: var(--layout-node-size, 18%);
+          aspect-ratio: 1 / 1;
+        }
+
+        .layout-editor-node-wrapper:active {
+          cursor: grabbing;
+        }
+
+        .layout-editor-node-wrapper article {
+          pointer-events: none;
         }
 
         .layout-node.has-image {
