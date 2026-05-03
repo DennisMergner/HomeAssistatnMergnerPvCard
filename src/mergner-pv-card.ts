@@ -1492,7 +1492,7 @@ class MergnerPvCard extends HTMLElement {
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 2px;
+          gap: clamp(1px, 1.5cqw, 3px);
           width: 100%;
         }
 
@@ -1508,27 +1508,29 @@ class MergnerPvCard extends HTMLElement {
           display: flex;
           justify-content: center;
           align-items: center;
-          width: 58px;
-          height: 58px;
-          margin-bottom: 6px;
+          width: clamp(20px, 38cqw, 70px);
+          height: clamp(20px, 38cqw, 70px);
+          margin-bottom: clamp(2px, 2.5cqw, 6px);
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.1);
+          flex-shrink: 0;
         }
 
         .node-media img {
-          width: 42px;
-          height: 42px;
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
           object-fit: cover;
           border-radius: 50%;
         }
 
         .fallback-icon {
-          width: 42px;
-          height: 42px;
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
           border-radius: 50%;
           display: grid;
           place-items: center;
           font-weight: 700;
+          font-size: clamp(8px, 14cqw, 24px);
           color: #fff;
           background: rgba(255, 255, 255, 0.16);
         }
@@ -1580,12 +1582,12 @@ class MergnerPvCard extends HTMLElement {
           top: calc(100% + var(--node-stats-gap, 6cqw));
           transform: translateX(-50%);
           display: grid;
-          gap: 4px;
+          gap: clamp(2px, 2cqw, 5px);
           text-align: left;
           background: rgba(4, 15, 21, 0.48);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 12px;
-          padding: 8px 10px;
+          padding: clamp(4px, 4cqw, 10px) clamp(5px, 5cqw, 12px);
           backdrop-filter: blur(4px);
         }
 
@@ -1600,8 +1602,8 @@ class MergnerPvCard extends HTMLElement {
         .node-stat {
           display: flex;
           justify-content: space-between;
-          gap: 8px;
-          font-size: 0.7rem;
+          gap: clamp(4px, 4cqw, 10px);
+          font-size: clamp(7px, 6.5cqw, 12px);
         }
 
         .node-stat span {
@@ -1625,11 +1627,6 @@ class MergnerPvCard extends HTMLElement {
           .node {
             width: min(58vw, var(--node-size));
             aspect-ratio: 1 / 1;
-          }
-
-          .node-header {
-            top: -4px;
-            max-width: 180cqw;
           }
         }
       </style>
@@ -2159,51 +2156,57 @@ class MergnerPvCardEditor extends HTMLElement {
     const nodeMarkup = nodes
       .map((node, index) => {
         const image = node.image?.trim();
-        const media = `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
-        const projected = projectedNodeMap.get(node.id);
-        if (!projected) {
-          return "";
-        }
-        const role = node.role ?? "custom";
-        const labelGap = this.clampEditorLabelGap(Number(node.labelGap ?? 6));
-        const headerFontScale = this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1));
-        const centerValueOffsetX = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0));
-        const centerValueOffsetY = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
-        const centerValueScale = this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1));
-        const showLabelBackground = node.showLabelBackground !== false;
-        const centerValueEnabled = (node.centerValue ?? role === "battery") === true;
-        const centerMetricValue = role === "battery" ? "72%" : "4.2 kW";
-        const centerMetricLabel = role === "battery" ? "SOC" : "Leistung";
+            const projected = projectedNodeMap.get(node.id);
+            if (!projected) {
+              return "";
+            }
+            const role = node.role ?? "custom";
+            const safeName = this.safeText(node.name);
+            const initial = node.name.slice(0, 1).toUpperCase();
+            const labelGap = this.clampEditorLabelGap(Number(node.labelGap ?? 6));
+            const statsGap = this.clampEditorStatsGap(Number(node.statsGap ?? 6));
+            const headerFontScale = this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1));
+            const batteryRingThickness = this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7));
+            const centerValueOffsetX = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0));
+            const centerValueOffsetY = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
+            const centerValueScale = this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1));
+            const showLabelBackground = node.showLabelBackground !== false;
+            const centerValueEnabled = (node.centerValue ?? role === "battery") === true;
+            const isBattery = role === "battery";
+            const batteryStyle = isBattery
+              ? `--battery-level:72; --battery-color:#6edb7a; --battery-ring-thickness:${batteryRingThickness}px;`
+              : `--battery-ring-thickness:${batteryRingThickness}px;`;
 
-        return `
+            return `
           <button
-            class="layout-editor-node-wrapper"
+            class="layout-editor-node-btn"
             data-action="drag-node"
             data-index="${index}"
             type="button"
-            style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; --node-label-gap:${labelGap}cqw; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}cqw; --node-center-offset-y:${centerValueOffsetY}cqw; --node-center-scale:${centerValueScale}; left:${projected.x}%; top:${projected.y}%; width: var(--layout-node-size); height: var(--layout-node-size);"
-            aria-label="Drag ${this.safeText(node.name)}"
+            style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; left:${projected.x}%; top:${projected.y}%;"
+            aria-label="Drag ${safeName}"
           >
-            <div class="layout-editor-node-header ${showLabelBackground ? "" : "is-plain"}">
-              <div class="layout-editor-node-chip layout-editor-node-kicker">${this.safeText(this.editorRoleLabel(role))}</div>
-              <div class="layout-editor-node-chip layout-editor-node-name">${this.safeText(node.name)}</div>
-            </div>
-            <div class="layout-editor-node-inner ${image ? "has-image" : ""}">
-              ${image ? `<img class="layout-editor-node-bg" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
-              <div class="layout-editor-node-content">
-                ${centerValueEnabled ? `
-                <div class="layout-editor-node-center-metric" aria-hidden="true">
-                  <div class="layout-editor-node-center-value">${this.safeText(centerMetricValue)}</div>
-                  <div class="layout-editor-node-center-label">${this.safeText(centerMetricLabel)}</div>
-                </div>
-                ` : ""}
-                ${image ? "" : `<div class="layout-editor-node-media">${media}</div>`}
+            <article class="node node-${role} ${showLabelBackground ? "" : "node-plain-labels"}" style="--node-size:100%; --node-text-scale:1; --node-label-gap:${labelGap}cqw; --node-stats-gap:${statsGap}cqw; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}cqw; --node-center-offset-y:${centerValueOffsetY}cqw; --node-center-scale:${centerValueScale}; ${batteryStyle}" aria-hidden="true">
+              <div class="node-header">
+                <div class="node-kicker node-chip">${this.safeText(this.editorRoleLabel(role))}</div>
+                <div class="node-label node-chip">${safeName}</div>
               </div>
-            </div>
+              <div class="node-orb ${image ? "has-image" : ""}">
+                ${isBattery ? '<div class="battery-ring" aria-hidden="true"></div>' : ""}
+                ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
+                ${centerValueEnabled ? `<div class="node-center-metric" aria-hidden="true"><div class="node-center-value">${isBattery ? "72%" : "\u2014"}</div>${isBattery ? '<div class="node-center-label">SOC</div>' : ""}</div>` : ""}
+                <div class="node-overlay">
+                  ${image ? "" : `<div class="node-media"><div class="fallback-icon">${initial}</div></div>`}
+                  <div class="node-bottom-info">
+                    ${!centerValueEnabled ? '<div class="node-value node-chip">\u2014</div>' : ""}
+                  </div>
+                </div>
+              </div>
+            </article>
           </button>
         `;
-      })
-      .join("");
+          })
+          .join("");
 
     const frame = this.getLayoutFrameSettings(nodes, effectiveZoom);
 
@@ -3057,7 +3060,7 @@ class MergnerPvCardEditor extends HTMLElement {
           container-type: size;
         }
 
-        .layout-editor-node-wrapper {
+        .layout-editor-node-btn {
           position: absolute;
           padding: 0;
           border: none;
@@ -3070,32 +3073,33 @@ class MergnerPvCardEditor extends HTMLElement {
           transform: translate(-50%, -50%);
           width: var(--layout-node-size, 18%);
           aspect-ratio: 1 / 1;
-          container-type: size;
         }
 
-        .layout-editor-node-wrapper:active {
+        .layout-editor-node-btn:active {
           cursor: grabbing;
         }
 
-        .layout-editor-node-wrapper article {
+        .layout-editor-node-btn .node {
+          position: relative !important;
+          left: auto !important;
+          top: auto !important;
+          transform: none !important;
+          width: 100% !important;
           pointer-events: none;
         }
 
-        .layout-editor-node-inner {
-          width: 100%;
-          height: 100%;
+        .node {
+          width: var(--node-size);
           aspect-ratio: 1 / 1;
-          position: relative;
-          border-radius: 50%;
-          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          overflow: hidden;
-          display: grid;
-          place-items: center;
+          max-width: none;
+          position: absolute;
+          transform: translate(-50%, -50%);
+          text-align: center;
+          z-index: 1;
           container-type: size;
         }
 
-        .layout-editor-node-header {
+        .node-header {
           position: absolute;
           left: 50%;
           top: calc(var(--node-label-gap, 6cqw) * -1);
@@ -3104,49 +3108,30 @@ class MergnerPvCardEditor extends HTMLElement {
           flex-direction: column;
           align-items: center;
           gap: 2px;
-          z-index: 3;
+          z-index: 6;
           width: max-content;
           max-width: 180cqw;
           pointer-events: none;
         }
 
-        .layout-editor-node-chip {
-          background: rgba(0, 0, 0, 0.45);
-          color: #ffffff;
-          border-radius: 8px;
-          padding: clamp(1px, 1.3cqw, 4px) clamp(4px, 4.6cqw, 12px);
-          line-height: 1.2;
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          white-space: nowrap;
-          max-width: 180cqw;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .layout-editor-node-header.is-plain .layout-editor-node-chip {
-          background: transparent;
-          border: none;
-          box-shadow: none;
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+        .node-orb {
+          width: 100%;
+          height: 100%;
+          aspect-ratio: 1 / 1;
           padding: 0;
+          display: grid;
+          align-content: start;
+          justify-items: center;
+          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 50%;
+          backdrop-filter: blur(6px);
+          box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.18);
+          position: relative;
+          overflow: visible;
         }
 
-        .layout-editor-node-kicker {
-          font-size: clamp(6px, calc(7.6cqw * var(--node-header-font-scale, 1)), 14px);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-        }
-
-        .layout-editor-node-name {
-          font-size: clamp(7px, calc(8.9cqw * var(--node-header-font-scale, 1)), 18px);
-          font-weight: 700;
-        }
-
-        .layout-editor-node-inner.has-image {
-          background: transparent;
-        }
-
-        .layout-editor-node-bg {
+        .node-bg-image {
           position: absolute;
           inset: 0;
           width: 100%;
@@ -3158,13 +3143,33 @@ class MergnerPvCardEditor extends HTMLElement {
           z-index: 0;
         }
 
-        .layout-editor-node-content {
+        .battery-ring {
           position: absolute;
-          inset: 0;
-          z-index: 1;
+          inset: -4px;
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 2;
+          transform: rotate(-90deg);
+          background: conic-gradient(var(--battery-color, #6edb7a) calc(var(--battery-level, 0) * 1%), rgba(255, 255, 255, 0.16) 0);
+          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--battery-ring-thickness, 7px)), #000 calc(100% - var(--battery-ring-thickness, 7px)));
+          mask: radial-gradient(farthest-side, transparent calc(100% - var(--battery-ring-thickness, 7px)), #000 calc(100% - var(--battery-ring-thickness, 7px)));
+          filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.16));
         }
 
-        .layout-editor-node-center-metric {
+        .node-overlay {
+          position: relative;
+          z-index: 3;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding: 0 clamp(2px, 6cqw, 10px) clamp(2px, 7cqw, 12px);
+          box-sizing: border-box;
+        }
+
+        .node-center-metric {
           position: absolute;
           left: 50%;
           top: 50%;
@@ -3183,34 +3188,108 @@ class MergnerPvCardEditor extends HTMLElement {
           pointer-events: none;
         }
 
-        .layout-editor-node-center-value {
+        .node-center-value {
           font-size: clamp(10px, calc(13.5cqw), 28px);
           font-weight: 700;
           color: #ffffff;
         }
 
-        .layout-editor-node-center-label {
-          font-size: clamp(6px, calc(7.2cqw), 15px);
-          color: #acd2d3;
+        .node-center-label {
+          font-size: clamp(7px, calc(6.2cqw), 16px);
+          color: var(--pv-card-muted, #acd2d3);
+          font-weight: 500;
+        }
+
+        .node-bottom-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: clamp(1px, 1.5cqw, 3px);
+          width: 100%;
+        }
+
+        .node-orb.has-image {
+          background: transparent;
+        }
+
+        .node-battery .node-orb {
+          border: 2px solid rgba(255, 255, 255, 0.24);
+        }
+
+        .node-media {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: clamp(20px, 38cqw, 70px);
+          height: clamp(20px, 38cqw, 70px);
+          margin-bottom: clamp(2px, 2.5cqw, 6px);
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
+          flex-shrink: 0;
+        }
+
+        .node-media img {
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
+          object-fit: cover;
+          border-radius: 50%;
+        }
+
+        .fallback-icon {
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          font-weight: 700;
+          font-size: clamp(8px, 14cqw, 24px);
+          color: #fff;
+          background: rgba(255, 255, 255, 0.16);
+        }
+
+        .node-label {
+          font-size: clamp(8px, calc(8.8cqw * var(--node-header-font-scale, 1)), 26px);
+          font-weight: 500;
+          max-width: 170cqw;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .node-kicker {
+          color: var(--pv-card-muted, #acd2d3);
+          font-size: clamp(7px, calc(6.2cqw * var(--node-header-font-scale, 1)), 16px);
+          font-weight: 400;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
 
-        .layout-editor-node-media {
-          position: absolute;
-          left: 50%;
-          top: calc(50% - clamp(16px, 34cqw, 48px) / 2 - 2px);
-          transform: translateX(-50%);
-          width: clamp(16px, 34cqw, 48px);
-          height: clamp(16px, 34cqw, 48px);
-          border-radius: 50%;
-          display: grid;
-          place-items: center;
-          background: rgba(255, 255, 255, 0.12);
-          color: #fff;
-          font-weight: 700;
-          font-size: clamp(8px, 12cqw, 14px);
-          flex-shrink: 0;
+        .node-value {
+          font-size: clamp(9px, calc(11.4cqw), 30px);
+          font-weight: 600;
+        }
+
+        .node-value-label {
+          color: var(--pv-card-muted, #acd2d3);
+          font-size: clamp(7px, calc(6.5cqw), 18px);
+          font-weight: 400;
+        }
+
+        .node-chip {
+          background: rgba(0, 0, 0, 0.45);
+          color: #ffffff;
+          border-radius: 8px;
+          padding: clamp(1px, 1.3cqw, 4px) clamp(4px, 4.6cqw, 12px);
+          line-height: 1.2;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .node.node-plain-labels .node-header .node-chip {
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+          padding: 0;
         }
 
         h4 {

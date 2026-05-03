@@ -1,4 +1,4 @@
-var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:"Heute",size:120,x:20,y:20},{id:"battery",name:"Batterie",role:"battery",entityLabel:"Laden / Entladen",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Heute",size:120,x:80,y:20},{id:"house",name:"Haus",role:"house",entityLabel:"Verbrauch",secondaryLabel:"Heute",size:120,x:20,y:80},{id:"grid",name:"Netz",role:"grid",entityLabel:"Bezug / Einspeisung",secondaryLabel:"Heute",size:120,x:80,y:80}],R=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],m={forwardColor:"#74e0cb",reverseColor:"#ffb166",idleColor:"#7e8f92",textColor:"#d8fff6",baseThickness:.78,textSize:1.7,textOutline:.28,linePattern:"dashed",speedCurve:"linear",speedMultiplier:1,maxAnimatedWatts:12e3,dynamicOrbCount:!1,orbCountMultiplier:1},z=class _ extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:V,links:R}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){let e=this.normalizeConfig(this._config??_.getStubConfig()),a=this.fitNodesToCard(e.nodes),r=this.getFlowFrameSettings(a),t=["pv","house","battery","grid","inverter"].map(s=>e.nodes.some(l=>this.getNodeRole(l)===s&&!!l.entity?.trim())).filter(Boolean).length,o=t===0?0:Math.ceil(t/4),n=74+(o*58+(o>0?12:0))+r.minHeight;return Math.max(3,Math.min(14,Math.ceil(n/50)))}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}clampNodeSize(e){return Number.isNaN(e)?120:Math.max(40,Math.min(320,e))}clampBatteryRingThickness(e){return Number.isFinite(e)?Math.max(2,Math.min(24,e)):7}clampNodeLabelGap(e){return Number.isFinite(e)?Math.max(-16,Math.min(52,e)):6}clampNodeStatsGap(e){return Number.isFinite(e)?Math.max(-12,Math.min(56,e)):6}clampNodeHeaderFontScale(e){return Number.isFinite(e)?Math.max(.4,Math.min(2.2,e)):1}clampCenterValueOffset(e){return Number.isFinite(e)?Math.max(-80,Math.min(80,e)):0}clampCenterValueScale(e){return Number.isFinite(e)?Math.max(.5,Math.min(2,e)):1}sanitizeHexColor(e,a){let r=typeof e=="string"?e.trim():"";return/^#([0-9a-fA-F]{6})$/.test(r)||/^#([0-9a-fA-F]{3})$/.test(r)?r:a}normalizeFlowStyle(e){let a=e??{};return{forwardColor:this.sanitizeHexColor(a.forwardColor,m.forwardColor),reverseColor:this.sanitizeHexColor(a.reverseColor,m.reverseColor),idleColor:this.sanitizeHexColor(a.idleColor,m.idleColor),textColor:this.sanitizeHexColor(a.textColor,m.textColor),baseThickness:Math.max(.4,Math.min(1.6,Number(a.baseThickness??m.baseThickness))),textSize:Math.max(1.1,Math.min(3.3,Number(a.textSize??m.textSize))),textOutline:Math.max(0,Math.min(.8,Number(a.textOutline??m.textOutline))),linePattern:a.linePattern==="orb"?"orb":"dashed",speedCurve:a.speedCurve==="log"?"log":"linear",speedMultiplier:Math.max(.3,Math.min(3,Number(a.speedMultiplier??m.speedMultiplier))),maxAnimatedWatts:Math.max(1200,Math.min(3e4,Number(a.maxAnimatedWatts??m.maxAnimatedWatts))),dynamicOrbCount:a.dynamicOrbCount===!0,orbCountMultiplier:Math.max(.2,Math.min(6,Number(a.orbCountMultiplier??m.orbCountMultiplier)))}}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}isEmptyState(e){return!e||e==="n/a"||e==="unavailable"||e==="unknown"}getUnit(e){let r=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof r=="string"?r:""}parseNumber(e){let a=this.getState(e),r=Number.parseFloat(a);return Number.isFinite(r)?r:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Batterie";case"house":return"Haus";case"grid":return"Netz";case"inverter":return"Wechselrichter";default:return"Knoten"}}defaultMetricLabel(e,a){if(a==="primary")switch(e){case"pv":return"Leistung";case"battery":return"Laden / Entladen";case"house":return"Verbrauch";case"grid":return"Bezug / Einspeisung";case"inverter":return"Leistung";default:return"Wert"}if(a==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":case"inverter":return"Heute";default:return"Detail"}return e==="battery"?"Heute":"Extra"}formatMetricValue(e,a){let r=e.trim(),t=a.trim();return t?`${r} ${t}`:r}getNodeMetrics(e){let a=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(a,"primary"),showWhenEmpty:!1},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(a,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(a,"tertiary"),showWhenEmpty:!1}].filter(t=>t.showWhenEmpty||!!t.entity?.trim()).map(t=>{let o=t.entity?this.getState(t.entity):"n/a",i=t.unit??(t.entity?this.getUnit(t.entity):"");return{label:t.label?.trim()||t.defaultLabel,value:o,numericValue:t.entity?this.parseNumber(t.entity):Number.NaN,unit:i}})}getBatteryLevel(e){let a=e.find(r=>r.unit==="%"||/soc|state of charge|akku|charge|level/i.test(r.label));if(!(!a||Number.isNaN(a.numericValue)))return this.clampMeterPercent(a.numericValue)}lerpColor(e,a,r){let t=e.replace("#",""),o=a.replace("#",""),i=Math.max(0,Math.min(1,r)),n=Number.parseInt(t.slice(0,2),16),s=Number.parseInt(t.slice(2,4),16),l=Number.parseInt(t.slice(4,6),16),d=Number.parseInt(o.slice(0,2),16),c=Number.parseInt(o.slice(2,4),16),p=Number.parseInt(o.slice(4,6),16),u=Math.round(n+(d-n)*i),h=Math.round(s+(c-s)*i),y=Math.round(l+(p-l)*i);return`#${[u,h,y].map(x=>x.toString(16).padStart(2,"0")).join("")}`}getBatteryRingColor(e){let a=[{at:0,color:"#ff1f1f"},{at:20,color:"#ff8a00"},{at:50,color:"#ffd84d"},{at:75,color:"#9eea4d"},{at:100,color:"#2ea043"}],r=Math.max(0,Math.min(100,e));for(let t=0;t<a.length-1;t+=1){let o=a[t],i=a[t+1];if(r>=o.at&&r<=i.at){let n=(r-o.at)/(i.at-o.at||1);return this.lerpColor(o.color,i.color,n)}}return a[a.length-1].color}getSummaryUnit(e){for(let a of e){let r=a.unit?.trim()||this.getUnit(a.entity);if(r)return r}return""}summaryIcon(e){switch(e){case"grid":return`<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",secondaryLabel:"Heute",size:120,x:20,y:20},{id:"battery",name:"Batterie",role:"battery",entityLabel:"Laden / Entladen",secondaryLabel:"SOC",secondaryUnit:"%",tertiaryLabel:"Heute",size:120,x:80,y:20},{id:"house",name:"Haus",role:"house",entityLabel:"Verbrauch",secondaryLabel:"Heute",size:120,x:20,y:80},{id:"grid",name:"Netz",role:"grid",entityLabel:"Bezug / Einspeisung",secondaryLabel:"Heute",size:120,x:80,y:80}],R=[{from:"solar",to:"house",entity:"sensor.pv_to_house_power"},{from:"solar",to:"battery",entity:"sensor.pv_to_battery_power"},{from:"battery",to:"house",entity:"sensor.battery_to_house_power"},{from:"grid",to:"house",entity:"sensor.grid_to_house_power"}],m={forwardColor:"#74e0cb",reverseColor:"#ffb166",idleColor:"#7e8f92",textColor:"#d8fff6",baseThickness:.78,textSize:1.7,textOutline:.28,linePattern:"dashed",speedCurve:"linear",speedMultiplier:1,maxAnimatedWatts:12e3,dynamicOrbCount:!1,orbCountMultiplier:1},z=class _ extends HTMLElement{_config;_hass;static getConfigElement(){return document.createElement("mergner-pv-card-editor")}static getStubConfig(){return{type:"custom:mergner-pv-card",title:"PV Flow",nodes:V,links:R}}setConfig(e){if(!e||e.type!=="custom:mergner-pv-card")throw new Error("Card type must be custom:mergner-pv-card");this._config=e,this.render()}set hass(e){this._hass=e,this.render()}getCardSize(){let e=this.normalizeConfig(this._config??_.getStubConfig()),r=this.fitNodesToCard(e.nodes),a=this.getFlowFrameSettings(r),t=["pv","house","battery","grid","inverter"].map(s=>e.nodes.some(l=>this.getNodeRole(l)===s&&!!l.entity?.trim())).filter(Boolean).length,o=t===0?0:Math.ceil(t/4),n=74+(o*58+(o>0?12:0))+a.minHeight;return Math.max(3,Math.min(14,Math.ceil(n/50)))}connectedCallback(){this.render()}safeText(e){return e.replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}clampMeterPercent(e){return Number.isNaN(e)?0:Math.max(0,Math.min(100,e))}clampNodeSize(e){return Number.isNaN(e)?120:Math.max(40,Math.min(320,e))}clampBatteryRingThickness(e){return Number.isFinite(e)?Math.max(2,Math.min(24,e)):7}clampNodeLabelGap(e){return Number.isFinite(e)?Math.max(-16,Math.min(52,e)):6}clampNodeStatsGap(e){return Number.isFinite(e)?Math.max(-12,Math.min(56,e)):6}clampNodeHeaderFontScale(e){return Number.isFinite(e)?Math.max(.4,Math.min(2.2,e)):1}clampCenterValueOffset(e){return Number.isFinite(e)?Math.max(-80,Math.min(80,e)):0}clampCenterValueScale(e){return Number.isFinite(e)?Math.max(.5,Math.min(2,e)):1}sanitizeHexColor(e,r){let a=typeof e=="string"?e.trim():"";return/^#([0-9a-fA-F]{6})$/.test(a)||/^#([0-9a-fA-F]{3})$/.test(a)?a:r}normalizeFlowStyle(e){let r=e??{};return{forwardColor:this.sanitizeHexColor(r.forwardColor,m.forwardColor),reverseColor:this.sanitizeHexColor(r.reverseColor,m.reverseColor),idleColor:this.sanitizeHexColor(r.idleColor,m.idleColor),textColor:this.sanitizeHexColor(r.textColor,m.textColor),baseThickness:Math.max(.4,Math.min(1.6,Number(r.baseThickness??m.baseThickness))),textSize:Math.max(1.1,Math.min(3.3,Number(r.textSize??m.textSize))),textOutline:Math.max(0,Math.min(.8,Number(r.textOutline??m.textOutline))),linePattern:r.linePattern==="orb"?"orb":"dashed",speedCurve:r.speedCurve==="log"?"log":"linear",speedMultiplier:Math.max(.3,Math.min(3,Number(r.speedMultiplier??m.speedMultiplier))),maxAnimatedWatts:Math.max(1200,Math.min(3e4,Number(r.maxAnimatedWatts??m.maxAnimatedWatts))),dynamicOrbCount:r.dynamicOrbCount===!0,orbCountMultiplier:Math.max(.2,Math.min(6,Number(r.orbCountMultiplier??m.orbCountMultiplier)))}}getEntity(e){if(!(!e||!this._hass?.states?.[e]))return this._hass.states[e]}getState(e){return this.getEntity(e)?.state??"n/a"}isEmptyState(e){return!e||e==="n/a"||e==="unavailable"||e==="unknown"}getUnit(e){let a=this.getEntity(e)?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}parseNumber(e){let r=this.getState(e),a=Number.parseFloat(r);return Number.isFinite(a)?a:0}getNodeRole(e){return e.role??"custom"}roleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Batterie";case"house":return"Haus";case"grid":return"Netz";case"inverter":return"Wechselrichter";default:return"Knoten"}}defaultMetricLabel(e,r){if(r==="primary")switch(e){case"pv":return"Leistung";case"battery":return"Laden / Entladen";case"house":return"Verbrauch";case"grid":return"Bezug / Einspeisung";case"inverter":return"Leistung";default:return"Wert"}if(r==="secondary")switch(e){case"battery":return"SOC";case"pv":case"house":case"grid":case"inverter":return"Heute";default:return"Detail"}return e==="battery"?"Heute":"Extra"}formatMetricValue(e,r){let a=e.trim(),t=r.trim();return t?`${a} ${t}`:a}getNodeMetrics(e){let r=this.getNodeRole(e);return[{entity:e.entity,label:e.entityLabel,unit:e.unit,defaultLabel:this.defaultMetricLabel(r,"primary"),showWhenEmpty:!1},{entity:e.secondaryEntity,label:e.secondaryLabel,unit:e.secondaryUnit,defaultLabel:this.defaultMetricLabel(r,"secondary"),showWhenEmpty:!1},{entity:e.tertiaryEntity,label:e.tertiaryLabel,unit:e.tertiaryUnit,defaultLabel:this.defaultMetricLabel(r,"tertiary"),showWhenEmpty:!1}].filter(t=>t.showWhenEmpty||!!t.entity?.trim()).map(t=>{let o=t.entity?this.getState(t.entity):"n/a",i=t.unit??(t.entity?this.getUnit(t.entity):"");return{label:t.label?.trim()||t.defaultLabel,value:o,numericValue:t.entity?this.parseNumber(t.entity):Number.NaN,unit:i}})}getBatteryLevel(e){let r=e.find(a=>a.unit==="%"||/soc|state of charge|akku|charge|level/i.test(a.label));if(!(!r||Number.isNaN(r.numericValue)))return this.clampMeterPercent(r.numericValue)}lerpColor(e,r,a){let t=e.replace("#",""),o=r.replace("#",""),i=Math.max(0,Math.min(1,a)),n=Number.parseInt(t.slice(0,2),16),s=Number.parseInt(t.slice(2,4),16),l=Number.parseInt(t.slice(4,6),16),d=Number.parseInt(o.slice(0,2),16),c=Number.parseInt(o.slice(2,4),16),p=Number.parseInt(o.slice(4,6),16),u=Math.round(n+(d-n)*i),h=Math.round(s+(c-s)*i),x=Math.round(l+(p-l)*i);return`#${[u,h,x].map(v=>v.toString(16).padStart(2,"0")).join("")}`}getBatteryRingColor(e){let r=[{at:0,color:"#ff1f1f"},{at:20,color:"#ff8a00"},{at:50,color:"#ffd84d"},{at:75,color:"#9eea4d"},{at:100,color:"#2ea043"}],a=Math.max(0,Math.min(100,e));for(let t=0;t<r.length-1;t+=1){let o=r[t],i=r[t+1];if(a>=o.at&&a<=i.at){let n=(a-o.at)/(i.at-o.at||1);return this.lerpColor(o.color,i.color,n)}}return r[r.length-1].color}getSummaryUnit(e){for(let r of e){let a=r.unit?.trim()||this.getUnit(r.entity);if(a)return a}return""}summaryIcon(e){switch(e){case"grid":return`<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M12 2L8 8H4l2 2-4 8h6l2 4h4l2-4h6l-4-8 2-2h-4L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
           <line x1="12" y1="8" x2="12" y2="20" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
           <line x1="6" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -20,7 +20,7 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           <path d="M7 15l3-6 2 4 2-4 3 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
         </svg>`;default:return`<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
-        </svg>`}}renderSummary(e){let r=[{role:"grid",label:"Netz",className:"grid"},{role:"house",label:"Verbrauch",className:"house"},{role:"pv",label:"Erzeugung",className:"pv"},{role:"battery",label:"Batterie",className:"battery"},{role:"inverter",label:"Wechselrichter",className:"inverter"}].map(t=>{let o=e.filter(l=>this.getNodeRole(l)===t.role&&l.entity?.trim());if(o.length===0)return"";let i=o.reduce((l,d)=>l+this.parseNumber(d.entity),0),n=this.getSummaryUnit(o),s=this.formatMetricValue(i.toFixed(Math.abs(i)>=100?0:1),n);return`
+        </svg>`}}renderSummary(e){let a=[{role:"grid",label:"Netz",className:"grid"},{role:"house",label:"Verbrauch",className:"house"},{role:"pv",label:"Erzeugung",className:"pv"},{role:"battery",label:"Batterie",className:"battery"},{role:"inverter",label:"Wechselrichter",className:"inverter"}].map(t=>{let o=e.filter(l=>this.getNodeRole(l)===t.role&&l.entity?.trim());if(o.length===0)return"";let i=o.reduce((l,d)=>l+this.parseNumber(d.entity),0),n=this.getSummaryUnit(o),s=this.formatMetricValue(i.toFixed(Math.abs(i)>=100?0:1),n);return`
           <div class="summary-chip ${t.className}">
             <div class="summary-icon">${this.summaryIcon(t.role)}</div>
             <div class="summary-text">
@@ -28,18 +28,18 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
               <strong>${this.safeText(s)}</strong>
             </div>
           </div>
-        `}).join("");return r.trim()?`<div class="summary-row">${r}</div>`:""}normalizeConfig(e){let a=e.title??"PV Flow",r=this.normalizeFlowStyle(e.flowStyle);if(e.nodes&&e.nodes.length>0){let o=e.nodes.map(n=>({...n,id:n.id?.trim()||`node_${Math.random().toString(36).slice(2,8)}`,name:n.name?.trim()||"Node",role:n.role??"custom",size:this.clampNodeSize(Number(n.size??120)),x:this.clampPercent(Number(n.x)),y:this.clampPercent(Number(n.y)),batteryRingThickness:this.clampBatteryRingThickness(Number(n.batteryRingThickness??7)),labelGap:this.clampNodeLabelGap(Number(n.labelGap??6)),statsGap:this.clampNodeStatsGap(Number(n.statsGap??6)),headerFontScale:this.clampNodeHeaderFontScale(Number(n.headerFontScale??1)),showLabelBackground:n.showLabelBackground!==!1,centerValue:n.centerValue??n.role==="battery",centerValueOffsetX:this.clampCenterValueOffset(Number(n.centerValueOffsetX??0)),centerValueOffsetY:this.clampCenterValueOffset(Number(n.centerValueOffsetY??0)),centerValueScale:this.clampCenterValueScale(Number(n.centerValueScale??1))})),i=(e.links??[]).filter(n=>o.some(s=>s.id===n.from)&&o.some(s=>s.id===n.to));return{title:a,nodes:o,links:i,flowStyle:r}}let t=V.map(o=>({...o,entity:e.entities?.[o.id],image:e.images?.[o.id]}));return{title:a,nodes:t,links:R,flowStyle:r}}toNodeSizePercent(e){let r=this.clampNodeSize(e)/120*18;return Math.max(8,Math.min(36,r))}fitNodesToCard(e){let a=e.map(t=>({...t,x:this.clampPercent(Number(t.x)),y:this.clampPercent(Number(t.y)),renderSize:this.toNodeSizePercent(Number(t.size??120))})),r=1;for(let t of a){let o=t.renderSize/2,i=Math.abs(t.x-50),n=Math.abs(t.y-50),s=50/Math.max(1,i+o),l=50/Math.max(1,n+o);r=Math.min(r,s,l)}return r=Math.max(.22,Math.min(1,r)),a.map(t=>({...t,x:50+(t.x-50)*r,y:50+(t.y-50)*r,renderSize:t.renderSize*r}))}getFlowFrameSettings(e){if(e.length===0)return{aspect:1.45,minHeight:240};let a=100,r=0,t=100,o=0,i=8;for(let c of e){let p=c.renderSize/2;a=Math.min(a,c.x-p),r=Math.max(r,c.x+p),t=Math.min(t,c.y-p),o=Math.max(o,c.y+p),i=Math.max(i,c.renderSize)}let n=Math.max(28,r-a+8),s=Math.max(24,o-t+22),l=Math.max(1.05,Math.min(2.8,n/s)),d=Math.max(190,Math.min(460,Math.round(150+i*4+Math.max(0,e.length-5)*10)));return{aspect:l,minHeight:d}}renderNode(e){return this.getNodeArticleHTML(e,this.clampPercent(e.x),this.clampPercent(e.y),!1)}getNodeArticleHTML(e,a,r,t=!1){let o=this.getNodeRole(e),i=this.getNodeMetrics(e),n=i[0],s=i.slice(1),l=o==="battery"?this.getBatteryLevel(i):void 0,d=this.safeText(e.name),c=Math.max(4,Math.min(40,e.renderSize)),p=Math.max(.7,Math.min(1.22,c/18)),u=e.image?.trim(),h=`<div class="fallback-icon">${d.slice(0,1)}</div>`,y=o!=="battery"||l===void 0,x=l===void 0?"#6edb7a":this.getBatteryRingColor(l),b=this.clampBatteryRingThickness(Number(e.batteryRingThickness??7)),C=this.clampNodeLabelGap(Number(e.labelGap??6)),g=this.clampNodeStatsGap(Number(e.statsGap??6)),v=this.clampNodeHeaderFontScale(Number(e.headerFontScale??1)),f=e.showLabelBackground!==!1,k=(e.centerValue??o==="battery")===!0,M=this.clampCenterValueOffset(Number(e.centerValueOffsetX??0)),N=this.clampCenterValueOffset(Number(e.centerValueOffsetY??0)),E=this.clampCenterValueScale(Number(e.centerValueScale??1)),L=l===void 0?` --battery-ring-thickness:${b}px; --node-label-gap:${C}cqw; --node-stats-gap:${g}cqw; --node-header-font-scale:${v}; --node-center-offset-x:${M}cqw; --node-center-offset-y:${N}cqw; --node-center-scale:${E};`:` --battery-level:${l}; --battery-color:${x}; --battery-ring-thickness:${b}px; --node-label-gap:${C}cqw; --node-stats-gap:${g}cqw; --node-header-font-scale:${v}; --node-center-offset-x:${M}cqw; --node-center-offset-y:${N}cqw; --node-center-scale:${E};`,H=o==="battery"&&l!==void 0&&l<=10,O=o==="battery"&&l!==void 0?s.filter(w=>!(w.unit==="%"||/soc|state of charge|akku|charge|level/i.test(w.label))):s,q=o==="battery"&&n&&!Number.isNaN(n.numericValue)?n.numericValue>0?"is-charging":n.numericValue<0?"is-discharging":"is-idle":"",S=O.map(w=>`
+        `}).join("");return a.trim()?`<div class="summary-row">${a}</div>`:""}normalizeConfig(e){let r=e.title??"PV Flow",a=this.normalizeFlowStyle(e.flowStyle);if(e.nodes&&e.nodes.length>0){let o=e.nodes.map(n=>({...n,id:n.id?.trim()||`node_${Math.random().toString(36).slice(2,8)}`,name:n.name?.trim()||"Node",role:n.role??"custom",size:this.clampNodeSize(Number(n.size??120)),x:this.clampPercent(Number(n.x)),y:this.clampPercent(Number(n.y)),batteryRingThickness:this.clampBatteryRingThickness(Number(n.batteryRingThickness??7)),labelGap:this.clampNodeLabelGap(Number(n.labelGap??6)),statsGap:this.clampNodeStatsGap(Number(n.statsGap??6)),headerFontScale:this.clampNodeHeaderFontScale(Number(n.headerFontScale??1)),showLabelBackground:n.showLabelBackground!==!1,centerValue:n.centerValue??n.role==="battery",centerValueOffsetX:this.clampCenterValueOffset(Number(n.centerValueOffsetX??0)),centerValueOffsetY:this.clampCenterValueOffset(Number(n.centerValueOffsetY??0)),centerValueScale:this.clampCenterValueScale(Number(n.centerValueScale??1))})),i=(e.links??[]).filter(n=>o.some(s=>s.id===n.from)&&o.some(s=>s.id===n.to));return{title:r,nodes:o,links:i,flowStyle:a}}let t=V.map(o=>({...o,entity:e.entities?.[o.id],image:e.images?.[o.id]}));return{title:r,nodes:t,links:R,flowStyle:a}}toNodeSizePercent(e){let a=this.clampNodeSize(e)/120*18;return Math.max(8,Math.min(36,a))}fitNodesToCard(e){let r=e.map(t=>({...t,x:this.clampPercent(Number(t.x)),y:this.clampPercent(Number(t.y)),renderSize:this.toNodeSizePercent(Number(t.size??120))})),a=1;for(let t of r){let o=t.renderSize/2,i=Math.abs(t.x-50),n=Math.abs(t.y-50),s=50/Math.max(1,i+o),l=50/Math.max(1,n+o);a=Math.min(a,s,l)}return a=Math.max(.22,Math.min(1,a)),r.map(t=>({...t,x:50+(t.x-50)*a,y:50+(t.y-50)*a,renderSize:t.renderSize*a}))}getFlowFrameSettings(e){if(e.length===0)return{aspect:1.45,minHeight:240};let r=100,a=0,t=100,o=0,i=8;for(let c of e){let p=c.renderSize/2;r=Math.min(r,c.x-p),a=Math.max(a,c.x+p),t=Math.min(t,c.y-p),o=Math.max(o,c.y+p),i=Math.max(i,c.renderSize)}let n=Math.max(28,a-r+8),s=Math.max(24,o-t+22),l=Math.max(1.05,Math.min(2.8,n/s)),d=Math.max(190,Math.min(460,Math.round(150+i*4+Math.max(0,e.length-5)*10)));return{aspect:l,minHeight:d}}renderNode(e){return this.getNodeArticleHTML(e,this.clampPercent(e.x),this.clampPercent(e.y),!1)}getNodeArticleHTML(e,r,a,t=!1){let o=this.getNodeRole(e),i=this.getNodeMetrics(e),n=i[0],s=i.slice(1),l=o==="battery"?this.getBatteryLevel(i):void 0,d=this.safeText(e.name),c=Math.max(4,Math.min(40,e.renderSize)),p=Math.max(.7,Math.min(1.22,c/18)),u=e.image?.trim(),h=`<div class="fallback-icon">${d.slice(0,1)}</div>`,x=o!=="battery"||l===void 0,v=l===void 0?"#6edb7a":this.getBatteryRingColor(l),y=this.clampBatteryRingThickness(Number(e.batteryRingThickness??7)),C=this.clampNodeLabelGap(Number(e.labelGap??6)),g=this.clampNodeStatsGap(Number(e.statsGap??6)),w=this.clampNodeHeaderFontScale(Number(e.headerFontScale??1)),f=e.showLabelBackground!==!1,N=(e.centerValue??o==="battery")===!0,E=this.clampCenterValueOffset(Number(e.centerValueOffsetX??0)),b=this.clampCenterValueOffset(Number(e.centerValueOffsetY??0)),M=this.clampCenterValueScale(Number(e.centerValueScale??1)),L=l===void 0?` --battery-ring-thickness:${y}px; --node-label-gap:${C}cqw; --node-stats-gap:${g}cqw; --node-header-font-scale:${w}; --node-center-offset-x:${E}cqw; --node-center-offset-y:${b}cqw; --node-center-scale:${M};`:` --battery-level:${l}; --battery-color:${v}; --battery-ring-thickness:${y}px; --node-label-gap:${C}cqw; --node-stats-gap:${g}cqw; --node-header-font-scale:${w}; --node-center-offset-x:${E}cqw; --node-center-offset-y:${b}cqw; --node-center-scale:${M};`,q=o==="battery"&&l!==void 0&&l<=10,H=o==="battery"&&l!==void 0?s.filter(k=>!(k.unit==="%"||/soc|state of charge|akku|charge|level/i.test(k.label))):s,O=o==="battery"&&n&&!Number.isNaN(n.numericValue)?n.numericValue>0?"is-charging":n.numericValue<0?"is-discharging":"is-idle":"",S=H.map(k=>`
           <div class="node-stat">
-            <span>${this.safeText(w.label)}</span>
-            <strong>${this.safeText(this.formatMetricValue(w.value,w.unit))}</strong>
+            <span>${this.safeText(k.label)}</span>
+            <strong>${this.safeText(this.formatMetricValue(k.value,k.unit))}</strong>
           </div>
-        `).join(""),T=l===void 0?"":'<div class="battery-ring" aria-hidden="true"></div>',F=i.find(w=>w.unit==="%"||/soc|state of charge|akku|charge|level/i.test(w.label)),P=o==="battery"&&l!==void 0?`${l}%`:n&&!this.isEmptyState(n.value)?this.formatMetricValue(n.value,n.unit):"",$=o==="battery"&&F?F.label:n?.label??"",A=k&&P?`
+        `).join(""),T=l===void 0?"":'<div class="battery-ring" aria-hidden="true"></div>',F=i.find(k=>k.unit==="%"||/soc|state of charge|akku|charge|level/i.test(k.label)),P=o==="battery"&&l!==void 0?`${l}%`:n&&!this.isEmptyState(n.value)?this.formatMetricValue(n.value,n.unit):"",$=o==="battery"&&F?F.label:n?.label??"",A=N&&P?`
           <div class="node-center-metric" aria-label="Center metric">
             <div class="node-center-value">${this.safeText(P)}</div>
             ${$?`<div class="node-center-label">${this.safeText($)}</div>`:""}
           </div>
         `:"";return`
-      <article class="node node-${o} ${q} ${H?"battery-low":""} ${f?"":"node-plain-labels"}" style="--node-size:${c}%; --node-text-scale:${p.toFixed(2)}; left:${a}%; top:${r}%;${L}">
+      <article class="node node-${o} ${O} ${q?"battery-low":""} ${f?"":"node-plain-labels"}" style="--node-size:${c}%; --node-text-scale:${p.toFixed(2)}; left:${r}%; top:${a}%;${L}">
         <div class="node-header">
           <div class="node-kicker node-chip">${this.safeText(this.roleLabel(o))}</div>
           <div class="node-label node-chip">${d}</div>
@@ -51,19 +51,19 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           <div class="node-overlay">
             ${u?"":`<div class="node-media">${h}</div>`}
             <div class="node-bottom-info">
-              ${y&&!k&&n&&!this.isEmptyState(n.value)?`<div class="node-value node-chip">${this.safeText(this.formatMetricValue(n.value,n.unit))}</div>`:""}
-              ${y&&!k&&n&&!this.isEmptyState(n.value)?`<div class="node-value-label node-chip">${this.safeText(n.label)}</div>`:""}
+              ${x&&!N&&n&&!this.isEmptyState(n.value)?`<div class="node-value node-chip">${this.safeText(this.formatMetricValue(n.value,n.unit))}</div>`:""}
+              ${x&&!N&&n&&!this.isEmptyState(n.value)?`<div class="node-value-label node-chip">${this.safeText(n.label)}</div>`:""}
             </div>
           </div>
         </div>
         ${S?`<div class="node-stats">${S}</div>`:""}
       </article>
-    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}toWatts(e,a){let r=a.trim().toLowerCase();return Number.isFinite(e)?r==="kw"?e*1e3:r==="mw"?e*1e6:e:0}getEntityPowerWatts(e){if(!e?.trim())return 0;let a=Math.abs(this.parseNumber(e));return this.toWatts(a,this.getUnit(e))}getSignedFlowPowerWatts(e){if(!!(e.forwardEntity?.trim()||e.reverseEntity?.trim())){let o=this.getEntityPowerWatts(e.forwardEntity),i=this.getEntityPowerWatts(e.reverseEntity),n=0;return(o>0||i>0)&&(o>=i?n=o:n=-i),e.invert?-n:n}if(!e.entity?.trim())return 0;let r=this.parseNumber(e.entity),t=this.toWatts(r,this.getUnit(e.entity));return e.invert?-t:t}getLinkValue(e){if(e.valueEntity?.trim()){let t=this.getState(e.valueEntity),o=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(t,o)}let a=this.getSignedFlowPowerWatts(e);if(a===0)return"";let r=a>0?e.forwardEntity?.trim()||"":e.reverseEntity?.trim()||"";if(r){let t=this.getState(r),o=e.valueUnit??this.getUnit(r);return this.formatMetricValue(t,o)}if(e.entity?.trim()){let t=this.getState(e.entity),o=e.valueUnit??this.getUnit(e.entity);return this.formatMetricValue(t,o)}return""}resolveLinkDirection(e){let a=this.getSignedFlowPowerWatts(e);return a>0?"forward":a<0?"reverse":"idle"}getLinkDirectionalLabel(e,a){return a==="forward"&&e.forwardLabel?.trim()?e.forwardLabel.trim():a==="reverse"&&e.reverseLabel?.trim()?e.reverseLabel.trim():e.label?.trim()??""}getLinkPowerWatts(e){let a=Math.abs(this.getSignedFlowPowerWatts(e));return Number.isFinite(a)?a:0}getFlowPowerNormalized(e,a){let r=Math.max(0,e),t=Math.max(1,a.maxAnimatedWatts);return a.speedCurve==="log"?Math.min(1,Math.log10(r+1)/Math.log10(t+1)):Math.min(1,r/t)}getFlowStrokeWidth(e,a,r,t){return a==="idle"?Math.max(.35,.56*r):(.56+this.getFlowPowerNormalized(e,t)*.98)*r}getFlowDashLength(e,a,r){return a==="idle"?2.8:2.8+this.getFlowPowerNormalized(e,r)*2.2}getFlowDurationSeconds(e,a,r){let t=Math.max(.3,r.speedMultiplier);if(a==="idle")return Math.max(.35,2.6/t);let i=2.2-this.getFlowPowerNormalized(e,r)*1.65;return Math.max(.22,i/t)}getFlowParticleCount(e,a,r){if(a==="idle")return 0;if(!r.dynamicOrbCount)return 1;let t=this.getFlowPowerNormalized(e,r),o=1+Math.round(t*7*r.orbCountMultiplier);return Math.max(1,Math.min(16,o))}renderLinks(e,a,r){let t=new Map(e.map(i=>[i.id,i]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${a.map((i,n)=>{let s=t.get(i.from),l=t.get(i.to);if(!s||!l)return"";let d=(s.x+l.x)/2,c=(s.y+l.y)/2,p=l.x-s.x,u=l.y-s.y,h=Math.hypot(p,u)||1,y=-u/h,x=p/h,b=i.labelPosition??"top",C=i.valuePosition??"bottom",g=this.resolveLinkDirection(i),v=this.getLinkDirectionalLabel(i,g),f=this.getLinkValue(i),k=v&&f&&b===C?1.8:0,M=v&&f&&b===C?-1.8:0,N=this.getLineAnnotationOffset(b)+k,E=this.getLineAnnotationOffset(C)+M,L=d+y*N,H=c+x*N,O=d+y*E,q=c+x*E,S=this.getLinkPowerWatts(i),T=this.getFlowStrokeWidth(S,g,r.baseThickness,r),F=this.getFlowDashLength(S,g,r),P=Math.max(2.2,F*.85),$=this.getFlowDurationSeconds(S,g,r),A=Math.max(.55,Math.min(2.4,T*.9)),w=this.getFlowParticleCount(S,g,r),W=`flow-path-${n}`,U=this.sanitizeHexColor(i.forwardColor,r.forwardColor),D=this.sanitizeHexColor(i.reverseColor,r.reverseColor),I=`--flow-forward:${U}; --flow-reverse:${D};`,Z=`--flow-stroke:${T.toFixed(2)}; --flow-dash:${F.toFixed(2)}; --flow-gap:${P.toFixed(2)}; --flow-duration:${$.toFixed(2)}s;`,X=v?`<title>${this.safeText(v)}</title>`:"",Y=v?`<text class="flow-annotation flow-annotation-label" x="${L}" y="${H}" text-anchor="middle" dominant-baseline="middle">${this.safeText(v)}</text>`:"",K=f?`<text class="flow-annotation flow-annotation-value" x="${O}" y="${q}" text-anchor="middle" dominant-baseline="middle">${this.safeText(f)}</text>`:"",J=r.linePattern==="orb"&&w>0?Array.from({length:w},(te,Q)=>{let G=-($/w*Q),ee=g==="reverse"?'keyPoints="1;0" keyTimes="0;1" calcMode="linear"':'keyPoints="0;1" keyTimes="0;1" calcMode="linear"';return`<circle class="flow-particle ${g}" r="${A.toFixed(2)}">
-                <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.92;1" dur="${$.toFixed(2)}s" begin="${G.toFixed(2)}s" repeatCount="indefinite"></animate>
-                <animateMotion dur="${$.toFixed(2)}s" begin="${G.toFixed(2)}s" repeatCount="indefinite" ${ee}>
-                  <mpath href="#${W}"></mpath>
+    `}getLineAnnotationOffset(e){return e==="bottom"?3.6:-3.6}toWatts(e,r){let a=r.trim().toLowerCase();return Number.isFinite(e)?a==="kw"?e*1e3:a==="mw"?e*1e6:e:0}getEntityPowerWatts(e){if(!e?.trim())return 0;let r=Math.abs(this.parseNumber(e));return this.toWatts(r,this.getUnit(e))}getSignedFlowPowerWatts(e){if(!!(e.forwardEntity?.trim()||e.reverseEntity?.trim())){let o=this.getEntityPowerWatts(e.forwardEntity),i=this.getEntityPowerWatts(e.reverseEntity),n=0;return(o>0||i>0)&&(o>=i?n=o:n=-i),e.invert?-n:n}if(!e.entity?.trim())return 0;let a=this.parseNumber(e.entity),t=this.toWatts(a,this.getUnit(e.entity));return e.invert?-t:t}getLinkValue(e){if(e.valueEntity?.trim()){let t=this.getState(e.valueEntity),o=e.valueUnit??this.getUnit(e.valueEntity);return this.formatMetricValue(t,o)}let r=this.getSignedFlowPowerWatts(e);if(r===0)return"";let a=r>0?e.forwardEntity?.trim()||"":e.reverseEntity?.trim()||"";if(a){let t=this.getState(a),o=e.valueUnit??this.getUnit(a);return this.formatMetricValue(t,o)}if(e.entity?.trim()){let t=this.getState(e.entity),o=e.valueUnit??this.getUnit(e.entity);return this.formatMetricValue(t,o)}return""}resolveLinkDirection(e){let r=this.getSignedFlowPowerWatts(e);return r>0?"forward":r<0?"reverse":"idle"}getLinkDirectionalLabel(e,r){return r==="forward"&&e.forwardLabel?.trim()?e.forwardLabel.trim():r==="reverse"&&e.reverseLabel?.trim()?e.reverseLabel.trim():e.label?.trim()??""}getLinkPowerWatts(e){let r=Math.abs(this.getSignedFlowPowerWatts(e));return Number.isFinite(r)?r:0}getFlowPowerNormalized(e,r){let a=Math.max(0,e),t=Math.max(1,r.maxAnimatedWatts);return r.speedCurve==="log"?Math.min(1,Math.log10(a+1)/Math.log10(t+1)):Math.min(1,a/t)}getFlowStrokeWidth(e,r,a,t){return r==="idle"?Math.max(.35,.56*a):(.56+this.getFlowPowerNormalized(e,t)*.98)*a}getFlowDashLength(e,r,a){return r==="idle"?2.8:2.8+this.getFlowPowerNormalized(e,a)*2.2}getFlowDurationSeconds(e,r,a){let t=Math.max(.3,a.speedMultiplier);if(r==="idle")return Math.max(.35,2.6/t);let i=2.2-this.getFlowPowerNormalized(e,a)*1.65;return Math.max(.22,i/t)}getFlowParticleCount(e,r,a){if(r==="idle")return 0;if(!a.dynamicOrbCount)return 1;let t=this.getFlowPowerNormalized(e,a),o=1+Math.round(t*7*a.orbCountMultiplier);return Math.max(1,Math.min(16,o))}renderLinks(e,r,a){let t=new Map(e.map(i=>[i.id,i]));return`<svg class="line-layer" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${r.map((i,n)=>{let s=t.get(i.from),l=t.get(i.to);if(!s||!l)return"";let d=(s.x+l.x)/2,c=(s.y+l.y)/2,p=l.x-s.x,u=l.y-s.y,h=Math.hypot(p,u)||1,x=-u/h,v=p/h,y=i.labelPosition??"top",C=i.valuePosition??"bottom",g=this.resolveLinkDirection(i),w=this.getLinkDirectionalLabel(i,g),f=this.getLinkValue(i),N=w&&f&&y===C?1.8:0,E=w&&f&&y===C?-1.8:0,b=this.getLineAnnotationOffset(y)+N,M=this.getLineAnnotationOffset(C)+E,L=d+x*b,q=c+v*b,H=d+x*M,O=c+v*M,S=this.getLinkPowerWatts(i),T=this.getFlowStrokeWidth(S,g,a.baseThickness,a),F=this.getFlowDashLength(S,g,a),P=Math.max(2.2,F*.85),$=this.getFlowDurationSeconds(S,g,a),A=Math.max(.55,Math.min(2.4,T*.9)),k=this.getFlowParticleCount(S,g,a),G=`flow-path-${n}`,U=this.sanitizeHexColor(i.forwardColor,a.forwardColor),D=this.sanitizeHexColor(i.reverseColor,a.reverseColor),I=`--flow-forward:${U}; --flow-reverse:${D};`,Z=`--flow-stroke:${T.toFixed(2)}; --flow-dash:${F.toFixed(2)}; --flow-gap:${P.toFixed(2)}; --flow-duration:${$.toFixed(2)}s;`,X=w?`<title>${this.safeText(w)}</title>`:"",Y=w?`<text class="flow-annotation flow-annotation-label" x="${L}" y="${q}" text-anchor="middle" dominant-baseline="middle">${this.safeText(w)}</text>`:"",K=f?`<text class="flow-annotation flow-annotation-value" x="${H}" y="${O}" text-anchor="middle" dominant-baseline="middle">${this.safeText(f)}</text>`:"",J=a.linePattern==="orb"&&k>0?Array.from({length:k},(te,Q)=>{let W=-($/k*Q),ee=g==="reverse"?'keyPoints="1;0" keyTimes="0;1" calcMode="linear"':'keyPoints="0;1" keyTimes="0;1" calcMode="linear"';return`<circle class="flow-particle ${g}" r="${A.toFixed(2)}">
+                <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;0.08;0.92;1" dur="${$.toFixed(2)}s" begin="${W.toFixed(2)}s" repeatCount="indefinite"></animate>
+                <animateMotion dur="${$.toFixed(2)}s" begin="${W.toFixed(2)}s" repeatCount="indefinite" ${ee}>
+                  <mpath href="#${G}"></mpath>
                 </animateMotion>
-              </circle>`}).join(""):"";return`<g class="flow-edge" style="${I}"><path id="${W}" class="flow-path-helper" d="M ${s.x} ${s.y} L ${l.x} ${l.y}"></path><line class="flow-line ${g} ${r.linePattern}" style="${Z}" x1="${s.x}" y1="${s.y}" x2="${l.x}" y2="${l.y}">${X}</line>${J}${Y}${K}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let a=this.normalizeConfig(this._config??_.getStubConfig()),r=this.fitNodesToCard(a.nodes),t=this.getFlowFrameSettings(r);e.innerHTML=`
+              </circle>`}).join(""):"";return`<g class="flow-edge" style="${I}"><path id="${G}" class="flow-path-helper" d="M ${s.x} ${s.y} L ${l.x} ${l.y}"></path><line class="flow-line ${g} ${a.linePattern}" style="${Z}" x1="${s.x}" y1="${s.y}" x2="${l.x}" y2="${l.y}">${X}</line>${J}${Y}${K}</g>`}).join("")}</svg>`}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let r=this.normalizeConfig(this._config??_.getStubConfig()),a=this.fitNodesToCard(r.nodes),t=this.getFlowFrameSettings(a);e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -73,12 +73,12 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           --pv-card-bg: linear-gradient(135deg, #07151e 0%, #0f2f3a 45%, #1f4e55 100%);
           --pv-card-text: #e8f6f6;
           --pv-card-muted: #acd2d3;
-          --flow-forward: ${a.flowStyle.forwardColor};
-          --flow-reverse: ${a.flowStyle.reverseColor};
-          --flow-idle: ${a.flowStyle.idleColor};
-          --flow-annotation-color: ${a.flowStyle.textColor};
-          --flow-annotation-size: ${a.flowStyle.textSize}px;
-          --flow-annotation-stroke: ${a.flowStyle.textOutline}px;
+          --flow-forward: ${r.flowStyle.forwardColor};
+          --flow-reverse: ${r.flowStyle.reverseColor};
+          --flow-idle: ${r.flowStyle.idleColor};
+          --flow-annotation-color: ${r.flowStyle.textColor};
+          --flow-annotation-size: ${r.flowStyle.textSize}px;
+          --flow-annotation-stroke: ${r.flowStyle.textOutline}px;
           --flow-frame-min-height: ${t.minHeight}px;
           --flow-frame-aspect: ${t.aspect.toFixed(3)};
           --pv-card-node-bg: rgba(255, 255, 255, 0.08);
@@ -489,7 +489,7 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 2px;
+          gap: clamp(1px, 1.5cqw, 3px);
           width: 100%;
         }
 
@@ -505,27 +505,29 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           display: flex;
           justify-content: center;
           align-items: center;
-          width: 58px;
-          height: 58px;
-          margin-bottom: 6px;
+          width: clamp(20px, 38cqw, 70px);
+          height: clamp(20px, 38cqw, 70px);
+          margin-bottom: clamp(2px, 2.5cqw, 6px);
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.1);
+          flex-shrink: 0;
         }
 
         .node-media img {
-          width: 42px;
-          height: 42px;
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
           object-fit: cover;
           border-radius: 50%;
         }
 
         .fallback-icon {
-          width: 42px;
-          height: 42px;
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
           border-radius: 50%;
           display: grid;
           place-items: center;
           font-weight: 700;
+          font-size: clamp(8px, 14cqw, 24px);
           color: #fff;
           background: rgba(255, 255, 255, 0.16);
         }
@@ -577,12 +579,12 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           top: calc(100% + var(--node-stats-gap, 6cqw));
           transform: translateX(-50%);
           display: grid;
-          gap: 4px;
+          gap: clamp(2px, 2cqw, 5px);
           text-align: left;
           background: rgba(4, 15, 21, 0.48);
           border: 1px solid rgba(255, 255, 255, 0.08);
           border-radius: 12px;
-          padding: 8px 10px;
+          padding: clamp(4px, 4cqw, 10px) clamp(5px, 5cqw, 12px);
           backdrop-filter: blur(4px);
         }
 
@@ -597,8 +599,8 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
         .node-stat {
           display: flex;
           justify-content: space-between;
-          gap: 8px;
-          font-size: 0.7rem;
+          gap: clamp(4px, 4cqw, 10px);
+          font-size: clamp(7px, 6.5cqw, 12px);
         }
 
         .node-stat span {
@@ -623,39 +625,34 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
             width: min(58vw, var(--node-size));
             aspect-ratio: 1 / 1;
           }
-
-          .node-header {
-            top: -4px;
-            max-width: 180cqw;
-          }
         }
       </style>
 
       <ha-card>
         <div class="title-row">
-          <div class="title">${this.safeText(a.title)}</div>
+          <div class="title">${this.safeText(r.title)}</div>
           <div class="title-version">v${this.safeText(B)}</div>
         </div>
-        ${this.renderSummary(a.nodes)}
+        ${this.renderSummary(r.nodes)}
         <div class="flow-wrap">
-          ${this.renderLinks(r,a.links,a.flowStyle)}
-          ${r.map(o=>this.renderNode(o)).join("")}
+          ${this.renderLinks(a,r.links,r.flowStyle)}
+          ${a.map(o=>this.renderNode(o)).join("")}
         </div>
         <div class="card-version">v${this.safeText(B)}</div>
       </ha-card>
-    `}},j=class extends HTMLElement{_config;_hass;_dragNodeIndex;_dragEventsBound=!1;_entityIdsSignature="";_layoutZoom=100;_layoutZoomMode="auto";_layoutGridSize=2.5;_expandedSections=new Set;_openEntityPicker;_entitySearchTerms=new Map;clampEditorNodeSize(e){return Number.isNaN(e)?120:Math.max(40,Math.min(320,e))}clampEditorBatteryRingThickness(e){return Number.isFinite(e)?Math.max(2,Math.min(24,Math.round(e))):7}clampEditorLabelGap(e){return Number.isFinite(e)?Math.max(-16,Math.min(52,Math.round(e))):6}clampEditorStatsGap(e){return Number.isFinite(e)?Math.max(-12,Math.min(56,Math.round(e))):6}clampEditorHeaderFontScale(e){return Number.isFinite(e)?Math.max(.4,Math.min(2.2,Number(e.toFixed(2)))):1}clampEditorCenterValueOffset(e){return Number.isFinite(e)?Math.max(-80,Math.min(80,Math.round(e))):0}clampEditorCenterValueScale(e){return Number.isFinite(e)?Math.max(.5,Math.min(2,Number(e.toFixed(2)))):1}editorRoleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Batterie";case"house":return"Haus";case"grid":return"Netz";case"inverter":return"Wechselrichter";default:return"Custom"}}clampFlowSetting(e,a,r,t){return Number.isFinite(e)?Math.max(a,Math.min(r,e)):t}clampEditorGridSize(e){return!Number.isFinite(e)||e<=0?2.5:Math.max(.5,Math.min(25,Number(e.toFixed(1))))}snapToGrid(e,a){return a<=0?e:Math.round(e/a)*a}sanitizeEditorHexColor(e,a){let r=typeof e=="string"?e.trim():"";return/^#([0-9a-fA-F]{6})$/.test(r)||/^#([0-9a-fA-F]{3})$/.test(r)?r:a}normalizeEditorFlowStyle(e){let a=e??{};return{forwardColor:this.sanitizeEditorHexColor(a.forwardColor,m.forwardColor),reverseColor:this.sanitizeEditorHexColor(a.reverseColor,m.reverseColor),idleColor:this.sanitizeEditorHexColor(a.idleColor,m.idleColor),textColor:this.sanitizeEditorHexColor(a.textColor,m.textColor),baseThickness:this.clampFlowSetting(Number(a.baseThickness??m.baseThickness),.4,1.6,m.baseThickness),textSize:this.clampFlowSetting(Number(a.textSize??m.textSize),1.1,3.3,m.textSize),textOutline:this.clampFlowSetting(Number(a.textOutline??m.textOutline),0,.8,m.textOutline),linePattern:a.linePattern==="orb"?"orb":"dashed",speedCurve:a.speedCurve==="log"?"log":"linear",speedMultiplier:this.clampFlowSetting(Number(a.speedMultiplier??m.speedMultiplier),.3,3,m.speedMultiplier),maxAnimatedWatts:this.clampFlowSetting(Number(a.maxAnimatedWatts??m.maxAnimatedWatts),1200,3e4,m.maxAnimatedWatts),dynamicOrbCount:a.dynamicOrbCount===!0,orbCountMultiplier:this.clampFlowSetting(Number(a.orbCountMultiplier??m.orbCountMultiplier),.2,6,m.orbCountMultiplier)}}safeText(e){return(typeof e=="string"?e:String(e??"")).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampEditorPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}getNodeRadiusPercent(e){let a=this.clampEditorNodeSize(Number(e.size??120));return Math.max(8,Math.min(36,a/120*18))/2}getZoomedNodeRadiusPercent(e,a){let r=Math.max(.2,a/100);return this.getNodeRadiusPercent(e)*r}clampNodePositionForZoom(e,a,r,t){let o=this.getZoomedNodeRadiusPercent(e,t),i=Math.max(2,o),n=Math.min(98,100-o);return{x:Math.max(i,Math.min(n,this.clampEditorPercent(a))),y:Math.max(i,Math.min(n,this.clampEditorPercent(r)))}}getProjectedLayoutNode(e,a){let r=Math.max(.2,a/100),t=Math.max(2.5,Math.min(58,this.getNodeRadiusPercent(e)*2*r)),o=t/2,i=this.projectLayoutPosition(e.x,a),n=this.projectLayoutPosition(e.y,a);return{x:Math.max(o,Math.min(100-o,i)),y:Math.max(o,Math.min(100-o,n)),sizePercent:t}}clampNodePosition(e,a,r){let t=this.getNodeRadiusPercent(e),o=Math.max(2,t),i=Math.min(98,100-t);return{x:Math.max(o,Math.min(i,this.clampEditorPercent(a))),y:Math.max(o,Math.min(i,this.clampEditorPercent(r)))}}normalizeEditorConfig(e){let a=z.getStubConfig(),r=e??{},t={...a,...r,title:(r.title??a.title??"PV Flow").toString(),flowStyle:this.normalizeEditorFlowStyle(r.flowStyle)},i=(Array.isArray(r.nodes)&&r.nodes.length>0?r.nodes:a.nodes??[]).map((d,c)=>{let p={...d,id:(d.id??`node_${c+1}`).toString().trim()||`node_${c+1}`,name:(d.name??`Node ${c+1}`).toString().trim()||`Node ${c+1}`,role:d.role??"custom",x:this.clampEditorPercent(Number(d.x)),y:this.clampEditorPercent(Number(d.y)),size:this.clampEditorNodeSize(Number(d.size??120)),batteryRingThickness:this.clampEditorBatteryRingThickness(Number(d.batteryRingThickness??7)),labelGap:this.clampEditorLabelGap(Number(d.labelGap??6)),statsGap:this.clampEditorStatsGap(Number(d.statsGap??6)),headerFontScale:this.clampEditorHeaderFontScale(Number(d.headerFontScale??1)),showLabelBackground:d.showLabelBackground!==!1,centerValue:d.centerValue??d.role==="battery",centerValueOffsetX:this.clampEditorCenterValueOffset(Number(d.centerValueOffsetX??0)),centerValueOffsetY:this.clampEditorCenterValueOffset(Number(d.centerValueOffsetY??0)),centerValueScale:this.clampEditorCenterValueScale(Number(d.centerValueScale??1))},u=this.clampNodePosition(p,p.x,p.y);return{...p,...u}}),n=new Set(i.map(d=>d.id)),l=(Array.isArray(r.links)?r.links:a.links??[]).filter(d=>n.has(d.from)&&n.has(d.to));return{...t,nodes:i,links:l}}setConfig(e){this._config=this.normalizeEditorConfig(e),this.render()}set hass(e){let a=Object.keys(e?.states??{}).sort((t,o)=>t.localeCompare(o)).join("|"),r=!this._hass||a!==this._entityIdsSignature;this._hass=e,this._entityIdsSignature=a,r&&this.render()}connectedCallback(){this.bindDragEvents(),this.render()}get safeConfig(){return this._config??z.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,a,r,t){let o=[...e],i={...o[r],...t},n=this.clampNodePosition(i,Number(i.x),Number(i.y));o[r]={...i,...n,size:this.clampEditorNodeSize(Number(i.size??120)),batteryRingThickness:this.clampEditorBatteryRingThickness(Number(i.batteryRingThickness??7)),labelGap:this.clampEditorLabelGap(Number(i.labelGap??6)),statsGap:this.clampEditorStatsGap(Number(i.statsGap??6)),headerFontScale:this.clampEditorHeaderFontScale(Number(i.headerFontScale??1)),showLabelBackground:i.showLabelBackground!==!1,centerValue:i.centerValue??i.role==="battery",centerValueOffsetX:this.clampEditorCenterValueOffset(Number(i.centerValueOffsetX??0)),centerValueOffsetY:this.clampEditorCenterValueOffset(Number(i.centerValueOffsetY??0)),centerValueScale:this.clampEditorCenterValueScale(Number(i.centerValueScale??1))},this.emitConfig({...this.safeConfig,nodes:o,links:a})}bindDragEvents(){this._dragEventsBound||(window.addEventListener("pointermove",this.handlePointerMove),window.addEventListener("pointerup",this.handlePointerUp),window.addEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!0)}disconnectedCallback(){this._dragEventsBound&&(window.removeEventListener("pointermove",this.handlePointerMove),window.removeEventListener("pointerup",this.handlePointerUp),window.removeEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!1)}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,a)=>e.localeCompare(a))}getEntityFriendlyName(e){let a=this._hass?.states?.[e]?.attributes?.friendly_name;return typeof a=="string"&&a.trim()?a.trim():""}getEntityUnit(e){let r=this._hass?.states?.[e]?.attributes?.unit_of_measurement;return typeof r=="string"?r:""}getEntityDeviceClass(e){let r=this._hass?.states?.[e]?.attributes?.device_class;return typeof r=="string"?r:""}matchesEntityFilter(e,a){if(a==="any")return!0;let r=this.getEntityUnit(e).toLowerCase(),t=this.getEntityDeviceClass(e).toLowerCase();return a==="power"?/^(w|kw|mw|gw|va|kva)$/.test(r)||["power","apparent_power","reactive_power"].includes(t):a==="energy"?/^(wh|kwh|mwh|gwh)$/.test(r)||t==="energy":r==="%"||t==="battery"}getNodeEntityFilter(e,a){return a==="entity"?"power":a==="secondaryEntity"?e.role==="battery"?"percent":"energy":a==="tertiaryEntity"?"energy":"any"}applyPickerFilter(e,a){let r=a.trim().toLowerCase();e.querySelectorAll(".picker-option").forEach(i=>{if(i.classList.contains("picker-clear")){i.hidden=!1;return}let n=(i.textContent??"").toLowerCase();i.hidden=r.length>0&&!n.includes(r)}),e.querySelectorAll(".picker-group").forEach(i=>{let n=i.querySelectorAll(".picker-option:not([hidden])");i.hidden=n.length===0});let t=e.querySelectorAll(".picker-option:not([hidden])").length>0,o=e.querySelector(".picker-no-results");o&&(o.hidden=t)}renderEntitySelect(e,a,r,t="Select entity",o="any"){let i=this.getEntityIds(),n=r?.trim()??"",s=this._entitySearchTerms.get(e)??"",l=this._openEntityPicker===e,d=n?this.getEntityFriendlyName(n):"",c=n?d||n:t,p=n&&d?`<span class="picker-trigger-id">${this.safeText(n)}</span>`:"",u=i.filter(f=>this.matchesEntityFilter(f,o)),h=i.filter(f=>!u.includes(f)),y=f=>{if(!s)return!0;let k=s.toLowerCase();return f.toLowerCase().includes(k)||this.getEntityFriendlyName(f).toLowerCase().includes(k)},x=(f,k)=>{let M=f.filter(y);return M.length?`
+    `}},j=class extends HTMLElement{_config;_hass;_dragNodeIndex;_dragEventsBound=!1;_entityIdsSignature="";_layoutZoom=100;_layoutZoomMode="auto";_layoutGridSize=2.5;_expandedSections=new Set;_openEntityPicker;_entitySearchTerms=new Map;clampEditorNodeSize(e){return Number.isNaN(e)?120:Math.max(40,Math.min(320,e))}clampEditorBatteryRingThickness(e){return Number.isFinite(e)?Math.max(2,Math.min(24,Math.round(e))):7}clampEditorLabelGap(e){return Number.isFinite(e)?Math.max(-16,Math.min(52,Math.round(e))):6}clampEditorStatsGap(e){return Number.isFinite(e)?Math.max(-12,Math.min(56,Math.round(e))):6}clampEditorHeaderFontScale(e){return Number.isFinite(e)?Math.max(.4,Math.min(2.2,Number(e.toFixed(2)))):1}clampEditorCenterValueOffset(e){return Number.isFinite(e)?Math.max(-80,Math.min(80,Math.round(e))):0}clampEditorCenterValueScale(e){return Number.isFinite(e)?Math.max(.5,Math.min(2,Number(e.toFixed(2)))):1}editorRoleLabel(e){switch(e){case"pv":return"PV";case"battery":return"Batterie";case"house":return"Haus";case"grid":return"Netz";case"inverter":return"Wechselrichter";default:return"Custom"}}clampFlowSetting(e,r,a,t){return Number.isFinite(e)?Math.max(r,Math.min(a,e)):t}clampEditorGridSize(e){return!Number.isFinite(e)||e<=0?2.5:Math.max(.5,Math.min(25,Number(e.toFixed(1))))}snapToGrid(e,r){return r<=0?e:Math.round(e/r)*r}sanitizeEditorHexColor(e,r){let a=typeof e=="string"?e.trim():"";return/^#([0-9a-fA-F]{6})$/.test(a)||/^#([0-9a-fA-F]{3})$/.test(a)?a:r}normalizeEditorFlowStyle(e){let r=e??{};return{forwardColor:this.sanitizeEditorHexColor(r.forwardColor,m.forwardColor),reverseColor:this.sanitizeEditorHexColor(r.reverseColor,m.reverseColor),idleColor:this.sanitizeEditorHexColor(r.idleColor,m.idleColor),textColor:this.sanitizeEditorHexColor(r.textColor,m.textColor),baseThickness:this.clampFlowSetting(Number(r.baseThickness??m.baseThickness),.4,1.6,m.baseThickness),textSize:this.clampFlowSetting(Number(r.textSize??m.textSize),1.1,3.3,m.textSize),textOutline:this.clampFlowSetting(Number(r.textOutline??m.textOutline),0,.8,m.textOutline),linePattern:r.linePattern==="orb"?"orb":"dashed",speedCurve:r.speedCurve==="log"?"log":"linear",speedMultiplier:this.clampFlowSetting(Number(r.speedMultiplier??m.speedMultiplier),.3,3,m.speedMultiplier),maxAnimatedWatts:this.clampFlowSetting(Number(r.maxAnimatedWatts??m.maxAnimatedWatts),1200,3e4,m.maxAnimatedWatts),dynamicOrbCount:r.dynamicOrbCount===!0,orbCountMultiplier:this.clampFlowSetting(Number(r.orbCountMultiplier??m.orbCountMultiplier),.2,6,m.orbCountMultiplier)}}safeText(e){return(typeof e=="string"?e:String(e??"")).replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;")}clampEditorPercent(e){return Number.isNaN(e)?50:Math.max(2,Math.min(98,e))}getNodeRadiusPercent(e){let r=this.clampEditorNodeSize(Number(e.size??120));return Math.max(8,Math.min(36,r/120*18))/2}getZoomedNodeRadiusPercent(e,r){let a=Math.max(.2,r/100);return this.getNodeRadiusPercent(e)*a}clampNodePositionForZoom(e,r,a,t){let o=this.getZoomedNodeRadiusPercent(e,t),i=Math.max(2,o),n=Math.min(98,100-o);return{x:Math.max(i,Math.min(n,this.clampEditorPercent(r))),y:Math.max(i,Math.min(n,this.clampEditorPercent(a)))}}getProjectedLayoutNode(e,r){let a=Math.max(.2,r/100),t=Math.max(2.5,Math.min(58,this.getNodeRadiusPercent(e)*2*a)),o=t/2,i=this.projectLayoutPosition(e.x,r),n=this.projectLayoutPosition(e.y,r);return{x:Math.max(o,Math.min(100-o,i)),y:Math.max(o,Math.min(100-o,n)),sizePercent:t}}clampNodePosition(e,r,a){let t=this.getNodeRadiusPercent(e),o=Math.max(2,t),i=Math.min(98,100-t);return{x:Math.max(o,Math.min(i,this.clampEditorPercent(r))),y:Math.max(o,Math.min(i,this.clampEditorPercent(a)))}}normalizeEditorConfig(e){let r=z.getStubConfig(),a=e??{},t={...r,...a,title:(a.title??r.title??"PV Flow").toString(),flowStyle:this.normalizeEditorFlowStyle(a.flowStyle)},i=(Array.isArray(a.nodes)&&a.nodes.length>0?a.nodes:r.nodes??[]).map((d,c)=>{let p={...d,id:(d.id??`node_${c+1}`).toString().trim()||`node_${c+1}`,name:(d.name??`Node ${c+1}`).toString().trim()||`Node ${c+1}`,role:d.role??"custom",x:this.clampEditorPercent(Number(d.x)),y:this.clampEditorPercent(Number(d.y)),size:this.clampEditorNodeSize(Number(d.size??120)),batteryRingThickness:this.clampEditorBatteryRingThickness(Number(d.batteryRingThickness??7)),labelGap:this.clampEditorLabelGap(Number(d.labelGap??6)),statsGap:this.clampEditorStatsGap(Number(d.statsGap??6)),headerFontScale:this.clampEditorHeaderFontScale(Number(d.headerFontScale??1)),showLabelBackground:d.showLabelBackground!==!1,centerValue:d.centerValue??d.role==="battery",centerValueOffsetX:this.clampEditorCenterValueOffset(Number(d.centerValueOffsetX??0)),centerValueOffsetY:this.clampEditorCenterValueOffset(Number(d.centerValueOffsetY??0)),centerValueScale:this.clampEditorCenterValueScale(Number(d.centerValueScale??1))},u=this.clampNodePosition(p,p.x,p.y);return{...p,...u}}),n=new Set(i.map(d=>d.id)),l=(Array.isArray(a.links)?a.links:r.links??[]).filter(d=>n.has(d.from)&&n.has(d.to));return{...t,nodes:i,links:l}}setConfig(e){this._config=this.normalizeEditorConfig(e),this.render()}set hass(e){let r=Object.keys(e?.states??{}).sort((t,o)=>t.localeCompare(o)).join("|"),a=!this._hass||r!==this._entityIdsSignature;this._hass=e,this._entityIdsSignature=r,a&&this.render()}connectedCallback(){this.bindDragEvents(),this.render()}get safeConfig(){return this._config??z.getStubConfig()}emitConfig(e){this._config=e,this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:e},bubbles:!0,composed:!0})),this.render()}updateNode(e,r,a,t){let o=[...e],i={...o[a],...t},n=this.clampNodePosition(i,Number(i.x),Number(i.y));o[a]={...i,...n,size:this.clampEditorNodeSize(Number(i.size??120)),batteryRingThickness:this.clampEditorBatteryRingThickness(Number(i.batteryRingThickness??7)),labelGap:this.clampEditorLabelGap(Number(i.labelGap??6)),statsGap:this.clampEditorStatsGap(Number(i.statsGap??6)),headerFontScale:this.clampEditorHeaderFontScale(Number(i.headerFontScale??1)),showLabelBackground:i.showLabelBackground!==!1,centerValue:i.centerValue??i.role==="battery",centerValueOffsetX:this.clampEditorCenterValueOffset(Number(i.centerValueOffsetX??0)),centerValueOffsetY:this.clampEditorCenterValueOffset(Number(i.centerValueOffsetY??0)),centerValueScale:this.clampEditorCenterValueScale(Number(i.centerValueScale??1))},this.emitConfig({...this.safeConfig,nodes:o,links:r})}bindDragEvents(){this._dragEventsBound||(window.addEventListener("pointermove",this.handlePointerMove),window.addEventListener("pointerup",this.handlePointerUp),window.addEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!0)}disconnectedCallback(){this._dragEventsBound&&(window.removeEventListener("pointermove",this.handlePointerMove),window.removeEventListener("pointerup",this.handlePointerUp),window.removeEventListener("pointercancel",this.handlePointerUp),this._dragEventsBound=!1)}getEntityIds(){return Object.keys(this._hass?.states??{}).sort((e,r)=>e.localeCompare(r))}getEntityFriendlyName(e){let r=this._hass?.states?.[e]?.attributes?.friendly_name;return typeof r=="string"&&r.trim()?r.trim():""}getEntityUnit(e){let a=this._hass?.states?.[e]?.attributes?.unit_of_measurement;return typeof a=="string"?a:""}getEntityDeviceClass(e){let a=this._hass?.states?.[e]?.attributes?.device_class;return typeof a=="string"?a:""}matchesEntityFilter(e,r){if(r==="any")return!0;let a=this.getEntityUnit(e).toLowerCase(),t=this.getEntityDeviceClass(e).toLowerCase();return r==="power"?/^(w|kw|mw|gw|va|kva)$/.test(a)||["power","apparent_power","reactive_power"].includes(t):r==="energy"?/^(wh|kwh|mwh|gwh)$/.test(a)||t==="energy":a==="%"||t==="battery"}getNodeEntityFilter(e,r){return r==="entity"?"power":r==="secondaryEntity"?e.role==="battery"?"percent":"energy":r==="tertiaryEntity"?"energy":"any"}applyPickerFilter(e,r){let a=r.trim().toLowerCase();e.querySelectorAll(".picker-option").forEach(i=>{if(i.classList.contains("picker-clear")){i.hidden=!1;return}let n=(i.textContent??"").toLowerCase();i.hidden=a.length>0&&!n.includes(a)}),e.querySelectorAll(".picker-group").forEach(i=>{let n=i.querySelectorAll(".picker-option:not([hidden])");i.hidden=n.length===0});let t=e.querySelectorAll(".picker-option:not([hidden])").length>0,o=e.querySelector(".picker-no-results");o&&(o.hidden=t)}renderEntitySelect(e,r,a,t="Select entity",o="any"){let i=this.getEntityIds(),n=a?.trim()??"",s=this._entitySearchTerms.get(e)??"",l=this._openEntityPicker===e,d=n?this.getEntityFriendlyName(n):"",c=n?d||n:t,p=n&&d?`<span class="picker-trigger-id">${this.safeText(n)}</span>`:"",u=i.filter(f=>this.matchesEntityFilter(f,o)),h=i.filter(f=>!u.includes(f)),x=f=>{if(!s)return!0;let N=s.toLowerCase();return f.toLowerCase().includes(N)||this.getEntityFriendlyName(f).toLowerCase().includes(N)},v=(f,N)=>{let E=f.filter(x);return E.length?`
         <div class="picker-group">
-          <div class="picker-group-label">${this.safeText(k)}</div>
-          ${M.map(N=>{let E=this.getEntityFriendlyName(N),L=N===n;return`
-              <div class="picker-option${L?" is-selected":""}" data-value="${this.safeText(N)}" role="option" aria-selected="${L}">
-                ${E?`<span class="picker-option-name">${this.safeText(E)}</span>`:""}
-                <span class="picker-option-id">${this.safeText(N)}</span>
+          <div class="picker-group-label">${this.safeText(N)}</div>
+          ${E.map(b=>{let M=this.getEntityFriendlyName(b),L=b===n;return`
+              <div class="picker-option${L?" is-selected":""}" data-value="${this.safeText(b)}" role="option" aria-selected="${L}">
+                ${M?`<span class="picker-option-name">${this.safeText(M)}</span>`:""}
+                <span class="picker-option-id">${this.safeText(b)}</span>
               </div>`}).join("")}
-        </div>`:""},b=n&&!i.includes(n)?`<div class="picker-option is-selected" data-value="${this.safeText(n)}" role="option">
+        </div>`:""},y=n&&!i.includes(n)?`<div class="picker-option is-selected" data-value="${this.safeText(n)}" role="option">
           <span class="picker-option-name">Custom</span>
           <span class="picker-option-id">${this.safeText(n)}</span>
-        </div>`:"",C=x(u,"Empfohlen"),g=x(h,"Alle Entit\xE4ten"),v=!!(b||C||g);return`
-      <div class="entity-picker" data-picker-id="${this.safeText(e)}" data-field="${String(a)}">
+        </div>`:"",C=v(u,"Empfohlen"),g=v(h,"Alle Entit\xE4ten"),w=!!(y||C||g);return`
+      <div class="entity-picker" data-picker-id="${this.safeText(e)}" data-field="${String(r)}">
         <button class="picker-trigger ${n?"has-value":""}" type="button" aria-haspopup="listbox" aria-expanded="${l}">
           <span class="picker-trigger-main">
             <span class="picker-trigger-label">${this.safeText(c)}</span>
@@ -676,41 +673,42 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           />
           <div class="picker-options">
             ${n?'<div class="picker-option picker-clear" data-value="" role="option"><span class="picker-option-name">\u2014 Auswahl l\xF6schen \u2014</span></div>':""}
-            ${b}
+            ${y}
             ${C}
             ${g}
-            ${v?"":'<div class="picker-no-results">Keine Entit\xE4t gefunden</div>'}
+            ${w?"":'<div class="picker-no-results">Keine Entit\xE4t gefunden</div>'}
           </div>
         </div>
         `:""}
       </div>
-    `}renderLayoutCanvas(e,a){let r=this.getEffectiveLayoutZoom(e),t=new Map(e.map(s=>[s.id,this.getProjectedLayoutNode(s,r)])),o=a.map(s=>{let l=t.get(s.from),d=t.get(s.to);return!l||!d?"":`<line x1="${l.x}" y1="${l.y}" x2="${d.x}" y2="${d.y}"></line>`}).join(""),i=e.map((s,l)=>{let d=s.image?.trim(),c=`<span>${this.safeText(s.name.slice(0,1).toUpperCase())}</span>`,p=t.get(s.id);if(!p)return"";let u=s.role??"custom",h=this.clampEditorLabelGap(Number(s.labelGap??6)),y=this.clampEditorHeaderFontScale(Number(s.headerFontScale??1)),x=this.clampEditorCenterValueOffset(Number(s.centerValueOffsetX??0)),b=this.clampEditorCenterValueOffset(Number(s.centerValueOffsetY??0)),C=this.clampEditorCenterValueScale(Number(s.centerValueScale??1)),g=s.showLabelBackground!==!1,v=(s.centerValue??u==="battery")===!0,f=u==="battery"?"72%":"4.2 kW",k=u==="battery"?"SOC":"Leistung";return`
+    `}renderLayoutCanvas(e,r){let a=this.getEffectiveLayoutZoom(e),t=new Map(e.map(s=>[s.id,this.getProjectedLayoutNode(s,a)])),o=r.map(s=>{let l=t.get(s.from),d=t.get(s.to);return!l||!d?"":`<line x1="${l.x}" y1="${l.y}" x2="${d.x}" y2="${d.y}"></line>`}).join(""),i=e.map((s,l)=>{let d=s.image?.trim(),c=t.get(s.id);if(!c)return"";let p=s.role??"custom",u=this.safeText(s.name),h=s.name.slice(0,1).toUpperCase(),x=this.clampEditorLabelGap(Number(s.labelGap??6)),v=this.clampEditorStatsGap(Number(s.statsGap??6)),y=this.clampEditorHeaderFontScale(Number(s.headerFontScale??1)),C=this.clampEditorBatteryRingThickness(Number(s.batteryRingThickness??7)),g=this.clampEditorCenterValueOffset(Number(s.centerValueOffsetX??0)),w=this.clampEditorCenterValueOffset(Number(s.centerValueOffsetY??0)),f=this.clampEditorCenterValueScale(Number(s.centerValueScale??1)),N=s.showLabelBackground!==!1,E=(s.centerValue??p==="battery")===!0,b=p==="battery",M=b?`--battery-level:72; --battery-color:#6edb7a; --battery-ring-thickness:${C}px;`:`--battery-ring-thickness:${C}px;`;return`
           <button
-            class="layout-editor-node-wrapper"
+            class="layout-editor-node-btn"
             data-action="drag-node"
             data-index="${l}"
             type="button"
-            style="--layout-node-size:${p.sizePercent.toFixed(2)}%; --node-label-gap:${h}cqw; --node-header-font-scale:${y}; --node-center-offset-x:${x}cqw; --node-center-offset-y:${b}cqw; --node-center-scale:${C}; left:${p.x}%; top:${p.y}%; width: var(--layout-node-size); height: var(--layout-node-size);"
-            aria-label="Drag ${this.safeText(s.name)}"
+            style="--layout-node-size:${c.sizePercent.toFixed(2)}%; left:${c.x}%; top:${c.y}%;"
+            aria-label="Drag ${u}"
           >
-            <div class="layout-editor-node-header ${g?"":"is-plain"}">
-              <div class="layout-editor-node-chip layout-editor-node-kicker">${this.safeText(this.editorRoleLabel(u))}</div>
-              <div class="layout-editor-node-chip layout-editor-node-name">${this.safeText(s.name)}</div>
-            </div>
-            <div class="layout-editor-node-inner ${d?"has-image":""}">
-              ${d?`<img class="layout-editor-node-bg" src="${this.safeText(d)}" alt="${this.safeText(s.name)}" />`:""}
-              <div class="layout-editor-node-content">
-                ${v?`
-                <div class="layout-editor-node-center-metric" aria-hidden="true">
-                  <div class="layout-editor-node-center-value">${this.safeText(f)}</div>
-                  <div class="layout-editor-node-center-label">${this.safeText(k)}</div>
-                </div>
-                `:""}
-                ${d?"":`<div class="layout-editor-node-media">${c}</div>`}
+            <article class="node node-${p} ${N?"":"node-plain-labels"}" style="--node-size:100%; --node-text-scale:1; --node-label-gap:${x}cqw; --node-stats-gap:${v}cqw; --node-header-font-scale:${y}; --node-center-offset-x:${g}cqw; --node-center-offset-y:${w}cqw; --node-center-scale:${f}; ${M}" aria-hidden="true">
+              <div class="node-header">
+                <div class="node-kicker node-chip">${this.safeText(this.editorRoleLabel(p))}</div>
+                <div class="node-label node-chip">${u}</div>
               </div>
-            </div>
+              <div class="node-orb ${d?"has-image":""}">
+                ${b?'<div class="battery-ring" aria-hidden="true"></div>':""}
+                ${d?`<img class="node-bg-image" src="${this.safeText(d)}" alt="${u}" loading="lazy" />`:""}
+                ${E?`<div class="node-center-metric" aria-hidden="true"><div class="node-center-value">${b?"72%":"\u2014"}</div>${b?'<div class="node-center-label">SOC</div>':""}</div>`:""}
+                <div class="node-overlay">
+                  ${d?"":`<div class="node-media"><div class="fallback-icon">${h}</div></div>`}
+                  <div class="node-bottom-info">
+                    ${E?"":'<div class="node-value node-chip">\u2014</div>'}
+                  </div>
+                </div>
+              </div>
+            </article>
           </button>
-        `}).join(""),n=this.getLayoutFrameSettings(e,r);return`
+        `}).join(""),n=this.getLayoutFrameSettings(e,a);return`
       <div class="layout-canvas-wrap">
         <div class="layout-toolbar">
           <label>
@@ -722,9 +720,9 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           </label>
           <label>
             <span>Zoom</span>
-            <input type="range" data-action="layout-zoom" min="50" max="160" step="5" value="${r}" ${this._layoutZoomMode==="auto"?"disabled":""} />
+            <input type="range" data-action="layout-zoom" min="50" max="160" step="5" value="${a}" ${this._layoutZoomMode==="auto"?"disabled":""} />
           </label>
-          <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${r}" ${this._layoutZoomMode==="auto"?"disabled":""} />
+          <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${a}" ${this._layoutZoomMode==="auto"?"disabled":""} />
         </div>
         <div class="layout-hint">Drag devices in the preview to set X/Y positions. Zoom scales both size and spacing.</div>
         <div class="layout-canvas" style="--layout-frame-min-height:${n.minHeight}px; --layout-frame-aspect:${n.aspect.toFixed(3)};">
@@ -732,81 +730,81 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           ${i}
         </div>
       </div>
-    `}getLayoutFrameSettings(e,a){if(e.length===0)return{aspect:1.45,minHeight:240};let r=100,t=0,o=100,i=0,n=8;for(let p of e){let u=this.getProjectedLayoutNode(p,a),h=u.sizePercent/2;r=Math.min(r,u.x-h),t=Math.max(t,u.x+h),o=Math.min(o,u.y-h),i=Math.max(i,u.y+h),n=Math.max(n,u.sizePercent)}let s=Math.max(30,t-r+8),l=Math.max(24,i-o+22),d=Math.max(1.05,Math.min(2.8,s/l)),c=Math.max(190,Math.min(460,Math.round(140+n*4.5+Math.max(0,e.length-5)*10)));return{aspect:d,minHeight:c}}startNodeDrag(e){this._dragNodeIndex=e}getEffectiveLayoutZoom(e){if(this._layoutZoomMode==="manual")return this._layoutZoom;let a=Math.max(...e.map(i=>this.clampEditorNodeSize(Number(i.size??120))),120),r=e.length>=8?.84:e.length>=6?.9:e.length>=4?.96:1,o=Math.round(96/a*100*r);return Math.max(65,Math.min(160,o))}projectLayoutPosition(e,a){let r=a/100,t=50+(e-50)*r;return Math.max(0,Math.min(100,t))}unprojectLayoutPosition(e,a){let r=a/100;if(r<=0)return e;let t=50+(e-50)/r;return this.clampEditorPercent(t)}handlePointerMove=e=>{if(this._dragNodeIndex===void 0)return;let r=this.shadowRoot?.querySelector(".layout-canvas");if(!r)return;let t=r.getBoundingClientRect();if(t.width===0||t.height===0)return;let o=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:V,i=this.safeConfig.links??R,n=this.getEffectiveLayoutZoom(o),s=o[this._dragNodeIndex];if(!s)return;let l=n/100,d=Math.max(24,Math.min(220,Math.round((s.size??120)*l))),c=d/2/t.width*100,p=d/2/t.height*100,u=Math.max(c,Math.min(100-c,(e.clientX-t.left)/t.width*100)),h=Math.max(p,Math.min(100-p,(e.clientY-t.top)/t.height*100)),y=this.unprojectLayoutPosition(u,n),x=this.unprojectLayoutPosition(h,n),b=this.clampNodePositionForZoom(s,y,x,n);this.updateNode(o,i,this._dragNodeIndex,{x:Number(b.x.toFixed(1)),y:Number(b.y.toFixed(1))})};handlePointerUp=()=>{this._dragNodeIndex=void 0};readFileAsDataUrl(e){return new Promise((a,r)=>{let t=new FileReader;t.addEventListener("load",()=>{if(typeof t.result=="string"){a(t.result);return}r(new Error("Image upload failed"))}),t.addEventListener("error",()=>r(t.error??new Error("Image upload failed"))),t.readAsDataURL(e)})}renderNodeRows(e){let a=["pv","battery","house","grid","inverter","custom"];return e.map((r,t)=>{let o=`node-${t}`,i=!this._expandedSections.has(o);return`
+    `}getLayoutFrameSettings(e,r){if(e.length===0)return{aspect:1.45,minHeight:240};let a=100,t=0,o=100,i=0,n=8;for(let p of e){let u=this.getProjectedLayoutNode(p,r),h=u.sizePercent/2;a=Math.min(a,u.x-h),t=Math.max(t,u.x+h),o=Math.min(o,u.y-h),i=Math.max(i,u.y+h),n=Math.max(n,u.sizePercent)}let s=Math.max(30,t-a+8),l=Math.max(24,i-o+22),d=Math.max(1.05,Math.min(2.8,s/l)),c=Math.max(190,Math.min(460,Math.round(140+n*4.5+Math.max(0,e.length-5)*10)));return{aspect:d,minHeight:c}}startNodeDrag(e){this._dragNodeIndex=e}getEffectiveLayoutZoom(e){if(this._layoutZoomMode==="manual")return this._layoutZoom;let r=Math.max(...e.map(i=>this.clampEditorNodeSize(Number(i.size??120))),120),a=e.length>=8?.84:e.length>=6?.9:e.length>=4?.96:1,o=Math.round(96/r*100*a);return Math.max(65,Math.min(160,o))}projectLayoutPosition(e,r){let a=r/100,t=50+(e-50)*a;return Math.max(0,Math.min(100,t))}unprojectLayoutPosition(e,r){let a=r/100;if(a<=0)return e;let t=50+(e-50)/a;return this.clampEditorPercent(t)}handlePointerMove=e=>{if(this._dragNodeIndex===void 0)return;let a=this.shadowRoot?.querySelector(".layout-canvas");if(!a)return;let t=a.getBoundingClientRect();if(t.width===0||t.height===0)return;let o=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:V,i=this.safeConfig.links??R,n=this.getEffectiveLayoutZoom(o),s=o[this._dragNodeIndex];if(!s)return;let l=n/100,d=Math.max(24,Math.min(220,Math.round((s.size??120)*l))),c=d/2/t.width*100,p=d/2/t.height*100,u=Math.max(c,Math.min(100-c,(e.clientX-t.left)/t.width*100)),h=Math.max(p,Math.min(100-p,(e.clientY-t.top)/t.height*100)),x=this.unprojectLayoutPosition(u,n),v=this.unprojectLayoutPosition(h,n),y=this.clampNodePositionForZoom(s,x,v,n);this.updateNode(o,i,this._dragNodeIndex,{x:Number(y.x.toFixed(1)),y:Number(y.y.toFixed(1))})};handlePointerUp=()=>{this._dragNodeIndex=void 0};readFileAsDataUrl(e){return new Promise((r,a)=>{let t=new FileReader;t.addEventListener("load",()=>{if(typeof t.result=="string"){r(t.result);return}a(new Error("Image upload failed"))}),t.addEventListener("error",()=>a(t.error??new Error("Image upload failed"))),t.readAsDataURL(e)})}renderNodeRows(e){let r=["pv","battery","house","grid","inverter","custom"];return e.map((a,t)=>{let o=`node-${t}`,i=!this._expandedSections.has(o);return`
           <section class="node-card ${i?"collapsed":""}" data-kind="node" data-index="${t}">
             <div class="card-head">
               <button class="collapse-toggle" data-action="toggle-section" data-section="${o}" type="button">${i?"\u25B6":"\u25BC"}</button>
-              <strong>${this.safeText(r.name||r.id)}</strong>
+              <strong>${this.safeText(a.name||a.id)}</strong>
             </div>
             ${i?"":`
             <div class="node-grid">
               <label>
                 <span>ID</span>
-                <input data-field="id" value="${this.safeText(r.id)}" placeholder="battery_1" />
+                <input data-field="id" value="${this.safeText(a.id)}" placeholder="battery_1" />
               </label>
               <label>
                 <span>Name</span>
-                <input data-field="name" value="${this.safeText(r.name)}" placeholder="Battery 1" />
+                <input data-field="name" value="${this.safeText(a.name)}" placeholder="Battery 1" />
               </label>
               <label>
                 <span>Type</span>
                 <select data-field="role">
-                  ${a.map(n=>`<option value="${n}" ${(r.role??"custom")===n?"selected":""}>${n}</option>`).join("")}
+                  ${r.map(n=>`<option value="${n}" ${(a.role??"custom")===n?"selected":""}>${n}</option>`).join("")}
                 </select>
               </label>
               <label>
                 <span>Image URL</span>
-                <input data-field="image" value="${this.safeText(r.image??"")}" placeholder="/local/pv/battery.png" />
+                <input data-field="image" value="${this.safeText(a.image??"")}" placeholder="/local/pv/battery.png" />
               </label>
               <label>
                 <span>X</span>
-                <input data-field="x" type="number" min="0" max="100" value="${r.x}" />
+                <input data-field="x" type="number" min="0" max="100" value="${a.x}" />
               </label>
               <label>
                 <span>Y</span>
-                <input data-field="y" type="number" min="0" max="100" value="${r.y}" />
+                <input data-field="y" type="number" min="0" max="100" value="${a.y}" />
               </label>
               <label>
                 <span>Size (px)</span>
-                <input data-field="size" type="number" min="40" max="320" value="${Math.round(r.size??120)}" />
+                <input data-field="size" type="number" min="40" max="320" value="${Math.round(a.size??120)}" />
               </label>
-              ${(r.role??"custom")==="battery"?`
+              ${(a.role??"custom")==="battery"?`
               <label>
                 <span>Battery ring thickness</span>
-                <input data-field="batteryRingThickness" type="number" min="2" max="24" step="1" value="${this.clampEditorBatteryRingThickness(Number(r.batteryRingThickness??7))}" />
+                <input data-field="batteryRingThickness" type="number" min="2" max="24" step="1" value="${this.clampEditorBatteryRingThickness(Number(a.batteryRingThickness??7))}" />
               </label>
               `:""}
               <label>
                 <span>Label distance above (rel.)</span>
-                <input data-field="labelGap" type="number" min="-16" max="52" step="1" value="${this.clampEditorLabelGap(Number(r.labelGap??6))}" />
+                <input data-field="labelGap" type="number" min="-16" max="52" step="1" value="${this.clampEditorLabelGap(Number(a.labelGap??6))}" />
               </label>
               <label>
                 <span>Stats distance below (rel.)</span>
-                <input data-field="statsGap" type="number" min="-12" max="56" step="1" value="${this.clampEditorStatsGap(Number(r.statsGap??6))}" />
+                <input data-field="statsGap" type="number" min="-12" max="56" step="1" value="${this.clampEditorStatsGap(Number(a.statsGap??6))}" />
               </label>
               <label>
                 <span>Header font scale</span>
-                <input data-field="headerFontScale" type="number" min="0.4" max="2.2" step="0.05" value="${this.clampEditorHeaderFontScale(Number(r.headerFontScale??1)).toFixed(2)}" />
+                <input data-field="headerFontScale" type="number" min="0.4" max="2.2" step="0.05" value="${this.clampEditorHeaderFontScale(Number(a.headerFontScale??1)).toFixed(2)}" />
               </label>
               <label class="inline-toggle">
                 <span>Center value in orb</span>
-                <span class="inline-toggle-row"><input data-field="centerValue" type="checkbox" ${r.centerValue??(r.role??"custom")==="battery"?"checked":""} />Enable center metric</span>
+                <span class="inline-toggle-row"><input data-field="centerValue" type="checkbox" ${a.centerValue??(a.role??"custom")==="battery"?"checked":""} />Enable center metric</span>
               </label>
               <label>
                 <span>Center value offset X (rel.)</span>
-                <input data-field="centerValueOffsetX" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(r.centerValueOffsetX??0))}" />
+                <input data-field="centerValueOffsetX" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(a.centerValueOffsetX??0))}" />
               </label>
               <label>
                 <span>Center value offset Y (rel.)</span>
-                <input data-field="centerValueOffsetY" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(r.centerValueOffsetY??0))}" />
+                <input data-field="centerValueOffsetY" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(a.centerValueOffsetY??0))}" />
               </label>
               <label>
                 <span>Center value scale</span>
-                <input data-field="centerValueScale" type="number" min="0.5" max="2" step="0.05" value="${this.clampEditorCenterValueScale(Number(r.centerValueScale??1)).toFixed(2)}" />
+                <input data-field="centerValueScale" type="number" min="0.5" max="2" step="0.05" value="${this.clampEditorCenterValueScale(Number(a.centerValueScale??1)).toFixed(2)}" />
               </label>
               <label class="inline-toggle">
                 <span>Label background</span>
-                <span class="inline-toggle-row"><input data-field="showLabelBackground" type="checkbox" ${r.showLabelBackground!==!1?"checked":""} />Show label chips</span>
+                <span class="inline-toggle-row"><input data-field="showLabelBackground" type="checkbox" ${a.showLabelBackground!==!1?"checked":""} />Show label chips</span>
               </label>
             </div>
             <div class="image-tools">
@@ -815,8 +813,8 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
                 <input data-action="upload-image" type="file" accept="image/*" />
               </label>
               <button data-action="clear-image" type="button">Clear image</button>
-              <div class="image-preview ${r.image?.trim()?"has-image":""}">
-                ${r.image?.trim()?`<img src="${this.safeText(r.image)}" alt="${this.safeText(r.name)} preview" />`:"<span>No image</span>"}
+              <div class="image-preview ${a.image?.trim()?"has-image":""}">
+                ${a.image?.trim()?`<img src="${this.safeText(a.image)}" alt="${this.safeText(a.name)} preview" />`:"<span>No image</span>"}
               </div>
             </div>
             <div class="metric-grid">
@@ -824,52 +822,52 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
                 <h5>Primary</h5>
                 <label>
                   <span>Entity</span>
-                  ${this.renderEntitySelect(`node-${t}-entity`,"entity",r.entity,"Choose primary entity",this.getNodeEntityFilter(r,"entity"))}
+                  ${this.renderEntitySelect(`node-${t}-entity`,"entity",a.entity,"Choose primary entity",this.getNodeEntityFilter(a,"entity"))}
                 </label>
                 <label>
                   <span>Label</span>
-                  <input data-field="entityLabel" value="${this.safeText(r.entityLabel??"")}" placeholder="Charge / Discharge" />
+                  <input data-field="entityLabel" value="${this.safeText(a.entityLabel??"")}" placeholder="Charge / Discharge" />
                 </label>
                 <label>
                   <span>Unit</span>
-                  <input data-field="unit" value="${this.safeText(r.unit??"")}" placeholder="auto / W" />
+                  <input data-field="unit" value="${this.safeText(a.unit??"")}" placeholder="auto / W" />
                 </label>
               </section>
               <section class="metric-group">
                 <h5>Secondary</h5>
                 <label>
                   <span>Entity</span>
-                  ${this.renderEntitySelect(`node-${t}-secondary`,"secondaryEntity",r.secondaryEntity,"Choose secondary entity",this.getNodeEntityFilter(r,"secondaryEntity"))}
+                  ${this.renderEntitySelect(`node-${t}-secondary`,"secondaryEntity",a.secondaryEntity,"Choose secondary entity",this.getNodeEntityFilter(a,"secondaryEntity"))}
                 </label>
                 <label>
                   <span>Label</span>
-                  <input data-field="secondaryLabel" value="${this.safeText(r.secondaryLabel??"")}" placeholder="SOC" />
+                  <input data-field="secondaryLabel" value="${this.safeText(a.secondaryLabel??"")}" placeholder="SOC" />
                 </label>
                 <label>
                   <span>Unit</span>
-                  <input data-field="secondaryUnit" value="${this.safeText(r.secondaryUnit??"")}" placeholder="auto / %" />
+                  <input data-field="secondaryUnit" value="${this.safeText(a.secondaryUnit??"")}" placeholder="auto / %" />
                 </label>
               </section>
               <section class="metric-group">
                 <h5>Tertiary</h5>
                 <label>
                   <span>Entity</span>
-                  ${this.renderEntitySelect(`node-${t}-tertiary`,"tertiaryEntity",r.tertiaryEntity,"Choose tertiary entity",this.getNodeEntityFilter(r,"tertiaryEntity"))}
+                  ${this.renderEntitySelect(`node-${t}-tertiary`,"tertiaryEntity",a.tertiaryEntity,"Choose tertiary entity",this.getNodeEntityFilter(a,"tertiaryEntity"))}
                 </label>
                 <label>
                   <span>Label</span>
-                  <input data-field="tertiaryLabel" value="${this.safeText(r.tertiaryLabel??"")}" placeholder="Today" />
+                  <input data-field="tertiaryLabel" value="${this.safeText(a.tertiaryLabel??"")}" placeholder="Today" />
                 </label>
                 <label>
                   <span>Unit</span>
-                  <input data-field="tertiaryUnit" value="${this.safeText(r.tertiaryUnit??"")}" placeholder="auto / kWh" />
+                  <input data-field="tertiaryUnit" value="${this.safeText(a.tertiaryUnit??"")}" placeholder="auto / kWh" />
                 </label>
               </section>
             </div>
             `}
             <button data-action="remove-node" type="button" class="remove-button">Remove Device</button>
           </section>
-        `}).join("")}renderLinkRows(e,a){let r=a.map(t=>`<option value="${this.safeText(t.id)}">${this.safeText(t.name)} (${this.safeText(t.id)})</option>`).join("");return e.map((t,o)=>{let i=`link-${o}`,n=!this._expandedSections.has(i),s=a.find(d=>d.id===t.from)?.name||t.from,l=a.find(d=>d.id===t.to)?.name||t.to;return`
+        `}).join("")}renderLinkRows(e,r){let a=r.map(t=>`<option value="${this.safeText(t.id)}">${this.safeText(t.name)} (${this.safeText(t.id)})</option>`).join("");return e.map((t,o)=>{let i=`link-${o}`,n=!this._expandedSections.has(i),s=r.find(d=>d.id===t.from)?.name||t.from,l=r.find(d=>d.id===t.to)?.name||t.to;return`
           <section class="row link-card ${n?"collapsed":""}" data-kind="link" data-index="${o}">
             <div class="card-head">
               <button class="collapse-toggle" data-action="toggle-section" data-section="${i}" type="button">${n?"\u25B6":"\u25BC"}</button>
@@ -880,11 +878,11 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
             <div class="link-grid">
               <label>
                 <span>From device</span>
-                <select data-field="from">${r}</select>
+                <select data-field="from">${a}</select>
               </label>
               <label>
                 <span>To device</span>
-                <select data-field="to">${r}</select>
+                <select data-field="to">${a}</select>
               </label>
               <label class="link-wide">
                 <span>Flow power entity (single signed sensor)</span>
@@ -954,7 +952,7 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
             `}
             <button data-action="remove-link" type="button" class="remove-button">Remove Flow</button>
           </section>
-        `}).join("")}wireEvents(e,a){let r=this.shadowRoot;r&&(r.querySelectorAll("button[data-action='toggle-section']").forEach(t=>{t.addEventListener("click",()=>{let o=t.dataset.section;o&&(this._expandedSections.has(o)?this._expandedSections.delete(o):this._expandedSections.add(o),this.render())})}),r.querySelectorAll(".entity-picker").forEach(t=>{let o=t.closest("[data-kind][data-index]");if(!o)return;let i=o.dataset.kind,n=Number(o.dataset.index),s=t.dataset.field,l=t.dataset.pickerId??"";t.querySelector(".picker-trigger")?.addEventListener("click",c=>{c.preventDefault(),c.stopPropagation(),this._openEntityPicker=this._openEntityPicker===l?void 0:l,this.render()}),t.querySelector(".picker-dropdown")?.addEventListener("click",c=>{c.stopPropagation()});let d=t.querySelector(".picker-search");if(d){setTimeout(()=>d.focus(),0),this.applyPickerFilter(t,d.value);let c=()=>{let p=d.value;this._entitySearchTerms.set(l,p),this.applyPickerFilter(t,p)};d.addEventListener("input",c),d.addEventListener("search",c),d.addEventListener("keyup",c),d.addEventListener("keydown",p=>{p.key==="Escape"&&(p.preventDefault(),p.stopPropagation(),this._openEntityPicker=void 0,this.render())})}t.querySelectorAll(".picker-option").forEach(c=>{c.addEventListener("mousedown",p=>{p.preventDefault()}),c.addEventListener("click",p=>{p.preventDefault(),p.stopPropagation();let u=c.dataset.value??"";if(this._openEntityPicker=void 0,i==="node")this.updateNode(e,a,n,{[s]:u});else{let h=[...a];h[n]={...h[n],[s]:u},this.emitConfig({...this.safeConfig,nodes:e,links:h})}})})}),r.addEventListener("click",t=>{!t.target?.closest(".entity-picker")&&this._openEntityPicker&&(this._openEntityPicker=void 0,this.render())}),r.querySelectorAll("input[data-action='layout-zoom']").forEach(t=>{t.addEventListener("input",()=>{let o=Number(t.value);Number.isFinite(o)&&(this._layoutZoomMode="manual",this._layoutZoom=Math.max(50,Math.min(160,o)),this.render())})}),r.querySelector("select[data-action='layout-zoom-mode']")?.addEventListener("change",t=>{let o=t.currentTarget;(o.value==="auto"||o.value==="manual")&&(this._layoutZoomMode=o.value,this.render())}),r.querySelectorAll("[data-action='flow-style']").forEach(t=>{let o=t instanceof HTMLInputElement&&t.type==="range"?"input":"change";t.addEventListener(o,()=>{let i=t.dataset.field;if(!i)return;let s={...this.normalizeEditorFlowStyle(this.safeConfig.flowStyle)};if(t.dataset.kind==="color"){let l=i;s[l]=t.value}else if(t.dataset.kind==="select")i==="linePattern"?s.linePattern=t.value==="orb"?"orb":"dashed":i==="speedCurve"&&(s.speedCurve=t.value==="log"?"log":"linear");else if(t.dataset.kind==="bool")t instanceof HTMLInputElement&&i==="dynamicOrbCount"&&(s.dynamicOrbCount=t.checked);else{let l=i;i==="maxAnimatedWatts"?s.maxAnimatedWatts=Number(t.value):i==="speedMultiplier"?s.speedMultiplier=Number(t.value):i==="orbCountMultiplier"?s.orbCountMultiplier=Number(t.value):s[l]=Number(t.value)}this.emitConfig({...this.safeConfig,flowStyle:this.normalizeEditorFlowStyle(s),nodes:e,links:a})})}),r.querySelectorAll(".node-card[data-kind='node']").forEach((t,o)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(i=>{let n=i instanceof HTMLInputElement&&i.type!=="checkbox"?"input":"change";i.addEventListener(n,()=>{let s=i.dataset.field,l=i instanceof HTMLInputElement?i.type==="number"?Number(i.value):i.type==="checkbox"?i.checked:i.value:i.value;this.updateNode(e,a,o,{[s]:l})})}),t.querySelector("input[data-action='upload-image']")?.addEventListener("change",async i=>{let n=i.currentTarget,s=n.files?.[0];if(s)try{let l=await this.readFileAsDataUrl(s);this.updateNode(e,a,o,{image:l})}catch(l){console.error(l)}finally{n.value=""}}),t.querySelector("button[data-action='clear-image']")?.addEventListener("click",()=>{this.updateNode(e,a,o,{image:""})}),t.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let i=e.filter((l,d)=>d!==o),n=new Set(i.map(l=>l.id)),s=a.filter(l=>n.has(l.from)&&n.has(l.to));this.emitConfig({...this.safeConfig,nodes:i,links:s})})}),r.querySelectorAll("button[data-action='drag-node']").forEach(t=>{t.addEventListener("pointerdown",o=>{if(o.button!==0)return;let i=Number(t.dataset.index);Number.isFinite(i)&&(o.preventDefault(),this.startNodeDrag(i))})}),r.querySelectorAll(".row[data-kind='link']").forEach((t,o)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(i=>{if(i instanceof HTMLInputElement&&i.type==="checkbox"){i.addEventListener("change",()=>{let n=[...a];n[o]={...n[o],invert:i.checked},this.emitConfig({...this.safeConfig,nodes:e,links:n})});return}i.addEventListener("change",()=>{let n=i.dataset.field,s=[...a];s[o]={...s[o],[n]:i.value},this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),t.querySelectorAll("button[data-action='reset-link-color']").forEach(i=>{i.addEventListener("click",()=>{let n=i.dataset.field,s=[...a],{[n]:l,...d}=s[o];s[o]=d,this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),t.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let i=a.filter((n,s)=>s!==o);this.emitConfig({...this.safeConfig,nodes:e,links:i})})}),r.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let t=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:t,links:a})}),r.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let t=[...a,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:t})}),r.querySelectorAll(".row[data-kind='link']").forEach((t,o)=>{let i=t.querySelectorAll("select[data-field]"),n=a[o];i[0]&&(i[0].value=n.from),i[1]&&(i[1].value=n.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let a=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:V,r=this.safeConfig.links??R;e.innerHTML=`
+        `}).join("")}wireEvents(e,r){let a=this.shadowRoot;a&&(a.querySelectorAll("button[data-action='toggle-section']").forEach(t=>{t.addEventListener("click",()=>{let o=t.dataset.section;o&&(this._expandedSections.has(o)?this._expandedSections.delete(o):this._expandedSections.add(o),this.render())})}),a.querySelectorAll(".entity-picker").forEach(t=>{let o=t.closest("[data-kind][data-index]");if(!o)return;let i=o.dataset.kind,n=Number(o.dataset.index),s=t.dataset.field,l=t.dataset.pickerId??"";t.querySelector(".picker-trigger")?.addEventListener("click",c=>{c.preventDefault(),c.stopPropagation(),this._openEntityPicker=this._openEntityPicker===l?void 0:l,this.render()}),t.querySelector(".picker-dropdown")?.addEventListener("click",c=>{c.stopPropagation()});let d=t.querySelector(".picker-search");if(d){setTimeout(()=>d.focus(),0),this.applyPickerFilter(t,d.value);let c=()=>{let p=d.value;this._entitySearchTerms.set(l,p),this.applyPickerFilter(t,p)};d.addEventListener("input",c),d.addEventListener("search",c),d.addEventListener("keyup",c),d.addEventListener("keydown",p=>{p.key==="Escape"&&(p.preventDefault(),p.stopPropagation(),this._openEntityPicker=void 0,this.render())})}t.querySelectorAll(".picker-option").forEach(c=>{c.addEventListener("mousedown",p=>{p.preventDefault()}),c.addEventListener("click",p=>{p.preventDefault(),p.stopPropagation();let u=c.dataset.value??"";if(this._openEntityPicker=void 0,i==="node")this.updateNode(e,r,n,{[s]:u});else{let h=[...r];h[n]={...h[n],[s]:u},this.emitConfig({...this.safeConfig,nodes:e,links:h})}})})}),a.addEventListener("click",t=>{!t.target?.closest(".entity-picker")&&this._openEntityPicker&&(this._openEntityPicker=void 0,this.render())}),a.querySelectorAll("input[data-action='layout-zoom']").forEach(t=>{t.addEventListener("input",()=>{let o=Number(t.value);Number.isFinite(o)&&(this._layoutZoomMode="manual",this._layoutZoom=Math.max(50,Math.min(160,o)),this.render())})}),a.querySelector("select[data-action='layout-zoom-mode']")?.addEventListener("change",t=>{let o=t.currentTarget;(o.value==="auto"||o.value==="manual")&&(this._layoutZoomMode=o.value,this.render())}),a.querySelectorAll("[data-action='flow-style']").forEach(t=>{let o=t instanceof HTMLInputElement&&t.type==="range"?"input":"change";t.addEventListener(o,()=>{let i=t.dataset.field;if(!i)return;let s={...this.normalizeEditorFlowStyle(this.safeConfig.flowStyle)};if(t.dataset.kind==="color"){let l=i;s[l]=t.value}else if(t.dataset.kind==="select")i==="linePattern"?s.linePattern=t.value==="orb"?"orb":"dashed":i==="speedCurve"&&(s.speedCurve=t.value==="log"?"log":"linear");else if(t.dataset.kind==="bool")t instanceof HTMLInputElement&&i==="dynamicOrbCount"&&(s.dynamicOrbCount=t.checked);else{let l=i;i==="maxAnimatedWatts"?s.maxAnimatedWatts=Number(t.value):i==="speedMultiplier"?s.speedMultiplier=Number(t.value):i==="orbCountMultiplier"?s.orbCountMultiplier=Number(t.value):s[l]=Number(t.value)}this.emitConfig({...this.safeConfig,flowStyle:this.normalizeEditorFlowStyle(s),nodes:e,links:r})})}),a.querySelectorAll(".node-card[data-kind='node']").forEach((t,o)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(i=>{let n=i instanceof HTMLInputElement&&i.type!=="checkbox"?"input":"change";i.addEventListener(n,()=>{let s=i.dataset.field,l=i instanceof HTMLInputElement?i.type==="number"?Number(i.value):i.type==="checkbox"?i.checked:i.value:i.value;this.updateNode(e,r,o,{[s]:l})})}),t.querySelector("input[data-action='upload-image']")?.addEventListener("change",async i=>{let n=i.currentTarget,s=n.files?.[0];if(s)try{let l=await this.readFileAsDataUrl(s);this.updateNode(e,r,o,{image:l})}catch(l){console.error(l)}finally{n.value=""}}),t.querySelector("button[data-action='clear-image']")?.addEventListener("click",()=>{this.updateNode(e,r,o,{image:""})}),t.querySelector("button[data-action='remove-node']")?.addEventListener("click",()=>{let i=e.filter((l,d)=>d!==o),n=new Set(i.map(l=>l.id)),s=r.filter(l=>n.has(l.from)&&n.has(l.to));this.emitConfig({...this.safeConfig,nodes:i,links:s})})}),a.querySelectorAll("button[data-action='drag-node']").forEach(t=>{t.addEventListener("pointerdown",o=>{if(o.button!==0)return;let i=Number(t.dataset.index);Number.isFinite(i)&&(o.preventDefault(),this.startNodeDrag(i))})}),a.querySelectorAll(".row[data-kind='link']").forEach((t,o)=>{t.querySelectorAll("input[data-field], select[data-field]").forEach(i=>{if(i instanceof HTMLInputElement&&i.type==="checkbox"){i.addEventListener("change",()=>{let n=[...r];n[o]={...n[o],invert:i.checked},this.emitConfig({...this.safeConfig,nodes:e,links:n})});return}i.addEventListener("change",()=>{let n=i.dataset.field,s=[...r];s[o]={...s[o],[n]:i.value},this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),t.querySelectorAll("button[data-action='reset-link-color']").forEach(i=>{i.addEventListener("click",()=>{let n=i.dataset.field,s=[...r],{[n]:l,...d}=s[o];s[o]=d,this.emitConfig({...this.safeConfig,nodes:e,links:s})})}),t.querySelector("button[data-action='remove-link']")?.addEventListener("click",()=>{let i=r.filter((n,s)=>s!==o);this.emitConfig({...this.safeConfig,nodes:e,links:i})})}),a.querySelector("button[data-action='add-node']")?.addEventListener("click",()=>{let t=[...e,{id:`node_${e.length+1}`,name:`Node ${e.length+1}`,x:50,y:50}];this.emitConfig({...this.safeConfig,nodes:t,links:r})}),a.querySelector("button[data-action='add-link']")?.addEventListener("click",()=>{if(e.length<2)return;let t=[...r,{from:e[0].id,to:e[1].id,entity:"",invert:!1}];this.emitConfig({...this.safeConfig,nodes:e,links:t})}),a.querySelectorAll(".row[data-kind='link']").forEach((t,o)=>{let i=t.querySelectorAll("select[data-field]"),n=r[o];i[0]&&(i[0].value=n.from),i[1]&&(i[1].value=n.to)}))}render(){this.shadowRoot||this.attachShadow({mode:"open"});let e=this.shadowRoot;if(!e)return;let r=this.safeConfig.nodes&&this.safeConfig.nodes.length>0?this.safeConfig.nodes:V,a=this.safeConfig.links??R;e.innerHTML=`
       <style>
         :host {
           display: block;
@@ -1092,7 +1090,7 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           container-type: size;
         }
 
-        .layout-editor-node-wrapper {
+        .layout-editor-node-btn {
           position: absolute;
           padding: 0;
           border: none;
@@ -1105,32 +1103,33 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           transform: translate(-50%, -50%);
           width: var(--layout-node-size, 18%);
           aspect-ratio: 1 / 1;
-          container-type: size;
         }
 
-        .layout-editor-node-wrapper:active {
+        .layout-editor-node-btn:active {
           cursor: grabbing;
         }
 
-        .layout-editor-node-wrapper article {
+        .layout-editor-node-btn .node {
+          position: relative !important;
+          left: auto !important;
+          top: auto !important;
+          transform: none !important;
+          width: 100% !important;
           pointer-events: none;
         }
 
-        .layout-editor-node-inner {
-          width: 100%;
-          height: 100%;
+        .node {
+          width: var(--node-size);
           aspect-ratio: 1 / 1;
-          position: relative;
-          border-radius: 50%;
-          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
-          border: 1px solid rgba(255, 255, 255, 0.16);
-          overflow: hidden;
-          display: grid;
-          place-items: center;
+          max-width: none;
+          position: absolute;
+          transform: translate(-50%, -50%);
+          text-align: center;
+          z-index: 1;
           container-type: size;
         }
 
-        .layout-editor-node-header {
+        .node-header {
           position: absolute;
           left: 50%;
           top: calc(var(--node-label-gap, 6cqw) * -1);
@@ -1139,49 +1138,30 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           flex-direction: column;
           align-items: center;
           gap: 2px;
-          z-index: 3;
+          z-index: 6;
           width: max-content;
           max-width: 180cqw;
           pointer-events: none;
         }
 
-        .layout-editor-node-chip {
-          background: rgba(0, 0, 0, 0.45);
-          color: #ffffff;
-          border-radius: 8px;
-          padding: clamp(1px, 1.3cqw, 4px) clamp(4px, 4.6cqw, 12px);
-          line-height: 1.2;
-          border: 1px solid rgba(255, 255, 255, 0.14);
-          white-space: nowrap;
-          max-width: 180cqw;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        .layout-editor-node-header.is-plain .layout-editor-node-chip {
-          background: transparent;
-          border: none;
-          box-shadow: none;
-          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+        .node-orb {
+          width: 100%;
+          height: 100%;
+          aspect-ratio: 1 / 1;
           padding: 0;
+          display: grid;
+          align-content: start;
+          justify-items: center;
+          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          border-radius: 50%;
+          backdrop-filter: blur(6px);
+          box-shadow: inset 0 0 24px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.18);
+          position: relative;
+          overflow: visible;
         }
 
-        .layout-editor-node-kicker {
-          font-size: clamp(6px, calc(7.6cqw * var(--node-header-font-scale, 1)), 14px);
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-        }
-
-        .layout-editor-node-name {
-          font-size: clamp(7px, calc(8.9cqw * var(--node-header-font-scale, 1)), 18px);
-          font-weight: 700;
-        }
-
-        .layout-editor-node-inner.has-image {
-          background: transparent;
-        }
-
-        .layout-editor-node-bg {
+        .node-bg-image {
           position: absolute;
           inset: 0;
           width: 100%;
@@ -1193,13 +1173,33 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           z-index: 0;
         }
 
-        .layout-editor-node-content {
+        .battery-ring {
           position: absolute;
-          inset: 0;
-          z-index: 1;
+          inset: -4px;
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 2;
+          transform: rotate(-90deg);
+          background: conic-gradient(var(--battery-color, #6edb7a) calc(var(--battery-level, 0) * 1%), rgba(255, 255, 255, 0.16) 0);
+          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - var(--battery-ring-thickness, 7px)), #000 calc(100% - var(--battery-ring-thickness, 7px)));
+          mask: radial-gradient(farthest-side, transparent calc(100% - var(--battery-ring-thickness, 7px)), #000 calc(100% - var(--battery-ring-thickness, 7px)));
+          filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.16));
         }
 
-        .layout-editor-node-center-metric {
+        .node-overlay {
+          position: relative;
+          z-index: 3;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding: 0 clamp(2px, 6cqw, 10px) clamp(2px, 7cqw, 12px);
+          box-sizing: border-box;
+        }
+
+        .node-center-metric {
           position: absolute;
           left: 50%;
           top: 50%;
@@ -1218,34 +1218,108 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           pointer-events: none;
         }
 
-        .layout-editor-node-center-value {
+        .node-center-value {
           font-size: clamp(10px, calc(13.5cqw), 28px);
           font-weight: 700;
           color: #ffffff;
         }
 
-        .layout-editor-node-center-label {
-          font-size: clamp(6px, calc(7.2cqw), 15px);
-          color: #acd2d3;
+        .node-center-label {
+          font-size: clamp(7px, calc(6.2cqw), 16px);
+          color: var(--pv-card-muted, #acd2d3);
+          font-weight: 500;
+        }
+
+        .node-bottom-info {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: clamp(1px, 1.5cqw, 3px);
+          width: 100%;
+        }
+
+        .node-orb.has-image {
+          background: transparent;
+        }
+
+        .node-battery .node-orb {
+          border: 2px solid rgba(255, 255, 255, 0.24);
+        }
+
+        .node-media {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          width: clamp(20px, 38cqw, 70px);
+          height: clamp(20px, 38cqw, 70px);
+          margin-bottom: clamp(2px, 2.5cqw, 6px);
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
+          flex-shrink: 0;
+        }
+
+        .node-media img {
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
+          object-fit: cover;
+          border-radius: 50%;
+        }
+
+        .fallback-icon {
+          width: clamp(16px, 30cqw, 56px);
+          height: clamp(16px, 30cqw, 56px);
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          font-weight: 700;
+          font-size: clamp(8px, 14cqw, 24px);
+          color: #fff;
+          background: rgba(255, 255, 255, 0.16);
+        }
+
+        .node-label {
+          font-size: clamp(8px, calc(8.8cqw * var(--node-header-font-scale, 1)), 26px);
+          font-weight: 500;
+          max-width: 170cqw;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .node-kicker {
+          color: var(--pv-card-muted, #acd2d3);
+          font-size: clamp(7px, calc(6.2cqw * var(--node-header-font-scale, 1)), 16px);
+          font-weight: 400;
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
 
-        .layout-editor-node-media {
-          position: absolute;
-          left: 50%;
-          top: calc(50% - clamp(16px, 34cqw, 48px) / 2 - 2px);
-          transform: translateX(-50%);
-          width: clamp(16px, 34cqw, 48px);
-          height: clamp(16px, 34cqw, 48px);
-          border-radius: 50%;
-          display: grid;
-          place-items: center;
-          background: rgba(255, 255, 255, 0.12);
-          color: #fff;
-          font-weight: 700;
-          font-size: clamp(8px, 12cqw, 14px);
-          flex-shrink: 0;
+        .node-value {
+          font-size: clamp(9px, calc(11.4cqw), 30px);
+          font-weight: 600;
+        }
+
+        .node-value-label {
+          color: var(--pv-card-muted, #acd2d3);
+          font-size: clamp(7px, calc(6.5cqw), 18px);
+          font-weight: 400;
+        }
+
+        .node-chip {
+          background: rgba(0, 0, 0, 0.45);
+          color: #ffffff;
+          border-radius: 8px;
+          padding: clamp(1px, 1.3cqw, 4px) clamp(4px, 4.6cqw, 12px);
+          line-height: 1.2;
+          border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+
+        .node.node-plain-labels .node-header .node-chip {
+          background: transparent;
+          border: none;
+          box-shadow: none;
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+          padding: 0;
         }
 
         h4 {
@@ -1810,7 +1884,7 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
         <section class="panel">
           <h3 class="panel-title">Layout</h3>
           <p class="panel-copy">Place devices visually. The X and Y fields update while you drag.</p>
-          ${this.renderLayoutCanvas(a,r)}
+          ${this.renderLayoutCanvas(r,a)}
           <h4>Flow style</h4>
           <div class="flow-style-grid">
             <label class="flow-style-row">
@@ -1883,15 +1957,15 @@ var B="0.0.61",V=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
         <section class="panel">
           <h3 class="panel-title">Devices</h3>
           <p class="panel-copy">Each device can show up to three values, for example power, SOC and daily energy.</p>
-          ${this.renderNodeRows(a)}
+          ${this.renderNodeRows(r)}
           <div class="actions"><button data-action="add-node" type="button">Add device</button></div>
         </section>
 
         <section class="panel">
           <h3 class="panel-title">Flows</h3>
           <p class="panel-copy">Connect devices and assign a power sensor to control arrow direction.</p>
-          ${this.renderLinkRows(r,a)}
+          ${this.renderLinkRows(a,r)}
           <div class="actions"><button data-action="add-link" type="button">Add flow</button></div>
         </section>
       </div>
-    `;let t=e.querySelector("#title");t?.addEventListener("change",()=>{this.emitConfig({...this.safeConfig,title:t.value,nodes:a,links:r})}),this.wireEvents(a,r)}};customElements.define("mergner-pv-card",z);customElements.define("mergner-pv-card-editor",j);window.customCards=window.customCards||[];window.customCards.push({type:"mergner-pv-card",name:"Mergner PV Card",description:"Dynamic PV flow card with visual editor",preview:!0});
+    `;let t=e.querySelector("#title");t?.addEventListener("change",()=>{this.emitConfig({...this.safeConfig,title:t.value,nodes:r,links:a})}),this.wireEvents(r,a)}};customElements.define("mergner-pv-card",z);customElements.define("mergner-pv-card-editor",j);window.customCards=window.customCards||[];window.customCards.push({type:"mergner-pv-card",name:"Mergner PV Card",description:"Dynamic PV flow card with visual editor",preview:!0});
