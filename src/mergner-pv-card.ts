@@ -239,28 +239,28 @@ class MergnerPvCard extends HTMLElement {
     if (!Number.isFinite(value)) {
       return 7;
     }
-    return Math.max(4, Math.min(16, value));
+    return Math.max(2, Math.min(24, value));
   }
 
   private clampNodeLabelGap(value: number): number {
     if (!Number.isFinite(value)) {
       return 6;
     }
-    return Math.max(0, Math.min(24, value));
+    return Math.max(-16, Math.min(52, value));
   }
 
   private clampNodeStatsGap(value: number): number {
     if (!Number.isFinite(value)) {
       return 6;
     }
-    return Math.max(0, Math.min(28, value));
+    return Math.max(-12, Math.min(56, value));
   }
 
   private clampNodeHeaderFontScale(value: number): number {
     if (!Number.isFinite(value)) {
       return 1;
     }
-    return Math.max(0.7, Math.min(1.35, value));
+    return Math.max(0.4, Math.min(2.2, value));
   }
 
   private sanitizeHexColor(input: unknown, fallback: string): string {
@@ -1574,28 +1574,28 @@ class MergnerPvCardEditor extends HTMLElement {
     if (!Number.isFinite(value)) {
       return 7;
     }
-    return Math.max(4, Math.min(16, Math.round(value)));
+    return Math.max(2, Math.min(24, Math.round(value)));
   }
 
   private clampEditorLabelGap(value: number): number {
     if (!Number.isFinite(value)) {
       return 6;
     }
-    return Math.max(0, Math.min(24, Math.round(value)));
+    return Math.max(-16, Math.min(52, Math.round(value)));
   }
 
   private clampEditorStatsGap(value: number): number {
     if (!Number.isFinite(value)) {
       return 6;
     }
-    return Math.max(0, Math.min(28, Math.round(value)));
+    return Math.max(-12, Math.min(56, Math.round(value)));
   }
 
   private clampEditorHeaderFontScale(value: number): number {
     if (!Number.isFinite(value)) {
       return 1;
     }
-    return Math.max(0.7, Math.min(1.35, Number(value.toFixed(2))));
+    return Math.max(0.4, Math.min(2.2, Number(value.toFixed(2))));
   }
 
   private clampFlowSetting(value: number, min: number, max: number, fallback: number): number {
@@ -2169,20 +2169,20 @@ class MergnerPvCardEditor extends HTMLElement {
               ${(node.role ?? "custom") === "battery" ? `
               <label>
                 <span>Battery ring thickness</span>
-                <input data-field="batteryRingThickness" type="number" min="4" max="16" step="1" value="${this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7))}" />
+                <input data-field="batteryRingThickness" type="number" min="2" max="24" step="1" value="${this.clampEditorBatteryRingThickness(Number(node.batteryRingThickness ?? 7))}" />
               </label>
               ` : ""}
               <label>
                 <span>Label distance above</span>
-                <input data-field="labelGap" type="number" min="0" max="24" step="1" value="${this.clampEditorLabelGap(Number(node.labelGap ?? 6))}" />
+                <input data-field="labelGap" type="number" min="-16" max="52" step="1" value="${this.clampEditorLabelGap(Number(node.labelGap ?? 6))}" />
               </label>
               <label>
                 <span>Stats distance below</span>
-                <input data-field="statsGap" type="number" min="0" max="28" step="1" value="${this.clampEditorStatsGap(Number(node.statsGap ?? 6))}" />
+                <input data-field="statsGap" type="number" min="-12" max="56" step="1" value="${this.clampEditorStatsGap(Number(node.statsGap ?? 6))}" />
               </label>
               <label>
                 <span>Header font scale</span>
-                <input data-field="headerFontScale" type="number" min="0.7" max="1.35" step="0.05" value="${this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1)).toFixed(2)}" />
+                <input data-field="headerFontScale" type="number" min="0.4" max="2.2" step="0.05" value="${this.clampEditorHeaderFontScale(Number(node.headerFontScale ?? 1)).toFixed(2)}" />
               </label>
               <label class="inline-toggle">
                 <span>Label background</span>
@@ -2524,7 +2524,8 @@ class MergnerPvCardEditor extends HTMLElement {
 
     root.querySelectorAll<HTMLElement>(".node-card[data-kind='node']").forEach((row, index) => {
       row.querySelectorAll<HTMLInputElement | HTMLSelectElement>("input[data-field], select[data-field]").forEach((input) => {
-        input.addEventListener("change", () => {
+        const eventName = input instanceof HTMLInputElement && input.type !== "checkbox" ? "input" : "change";
+        input.addEventListener(eventName, () => {
           const field = input.dataset.field as keyof FlowNode;
           const value = input instanceof HTMLInputElement
             ? (input.type === "number"
