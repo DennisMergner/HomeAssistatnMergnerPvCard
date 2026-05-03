@@ -729,8 +729,8 @@ class MergnerPvCard extends HTMLElement {
     const centerValueOffsetY = this.clampCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
     const centerValueScale = this.clampCenterValueScale(Number(node.centerValueScale ?? 1));
     const batteryStyle = batteryLevel === undefined
-      ? ` --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}px; --node-center-offset-y:${centerValueOffsetY}px; --node-center-scale:${centerValueScale};`
-      : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor}; --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}px; --node-stats-gap:${statsGap}px; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}px; --node-center-offset-y:${centerValueOffsetY}px; --node-center-scale:${centerValueScale};`;
+      ? ` --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}cqw; --node-stats-gap:${statsGap}cqw; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}cqw; --node-center-offset-y:${centerValueOffsetY}cqw; --node-center-scale:${centerValueScale};`
+      : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor}; --battery-ring-thickness:${batteryRingThickness}px; --node-label-gap:${labelGap}cqw; --node-stats-gap:${statsGap}cqw; --node-header-font-scale:${headerFontScale}; --node-center-offset-x:${centerValueOffsetX}cqw; --node-center-offset-y:${centerValueOffsetY}cqw; --node-center-scale:${centerValueScale};`;
     const isLowBattery = role === "battery" && batteryLevel !== undefined && batteryLevel <= 10;
     const filteredExtraMetrics =
       role === "battery" && batteryLevel !== undefined
@@ -1353,7 +1353,7 @@ class MergnerPvCard extends HTMLElement {
         .node-header {
           position: absolute;
           left: 50%;
-          top: calc(var(--node-label-gap, 6px) * -1);
+          top: calc(var(--node-label-gap, 6cqw) * -1);
           transform: translate(-50%, -100%);
           display: flex;
           flex-direction: column;
@@ -1446,7 +1446,7 @@ class MergnerPvCard extends HTMLElement {
           flex-direction: column;
           align-items: center;
           justify-content: flex-end;
-          padding: 0 6px 8px;
+          padding: 0 clamp(2px, 6cqw, 10px) clamp(2px, 7cqw, 12px);
           box-sizing: border-box;
         }
 
@@ -1454,9 +1454,9 @@ class MergnerPvCard extends HTMLElement {
           position: absolute;
           left: 50%;
           top: 50%;
-          transform: translate(calc(-50% + var(--node-center-offset-x, 0px)), calc(-50% + var(--node-center-offset-y, 0px))) scale(var(--node-center-scale, 1));
+          transform: translate(calc(-50% + var(--node-center-offset-x, 0cqw)), calc(-50% + var(--node-center-offset-y, 0cqw))) scale(var(--node-center-scale, 1));
           z-index: 4;
-          padding: 2px 7px;
+          padding: clamp(1px, 1.8cqw, 4px) clamp(3px, 5cqw, 10px);
           border-radius: 8px;
           background: rgba(0, 0, 0, 0.38);
           border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1464,7 +1464,7 @@ class MergnerPvCard extends HTMLElement {
           line-height: 1.1;
           display: grid;
           justify-items: center;
-          gap: 2px;
+          gap: clamp(1px, 1.2cqw, 3px);
           transform-origin: center;
         }
 
@@ -1577,7 +1577,7 @@ class MergnerPvCard extends HTMLElement {
         .node-stats {
           position: absolute;
           left: 50%;
-          top: calc(100% + var(--node-stats-gap, 6px));
+          top: calc(100% + var(--node-stats-gap, 6cqw));
           transform: translateX(-50%);
           display: grid;
           gap: 4px;
@@ -2370,11 +2370,11 @@ class MergnerPvCardEditor extends HTMLElement {
               </label>
               ` : ""}
               <label>
-                <span>Label distance above</span>
+                <span>Label distance above (rel.)</span>
                 <input data-field="labelGap" type="number" min="-16" max="52" step="1" value="${this.clampEditorLabelGap(Number(node.labelGap ?? 6))}" />
               </label>
               <label>
-                <span>Stats distance below</span>
+                <span>Stats distance below (rel.)</span>
                 <input data-field="statsGap" type="number" min="-12" max="56" step="1" value="${this.clampEditorStatsGap(Number(node.statsGap ?? 6))}" />
               </label>
               <label>
@@ -2386,11 +2386,11 @@ class MergnerPvCardEditor extends HTMLElement {
                 <span class="inline-toggle-row"><input data-field="centerValue" type="checkbox" ${(node.centerValue ?? ((node.role ?? "custom") === "battery")) ? "checked" : ""} />Enable center metric</span>
               </label>
               <label>
-                <span>Center value offset X</span>
+                <span>Center value offset X (rel.)</span>
                 <input data-field="centerValueOffsetX" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0))}" />
               </label>
               <label>
-                <span>Center value offset Y</span>
+                <span>Center value offset Y (rel.)</span>
                 <input data-field="centerValueOffsetY" type="number" min="-80" max="80" step="1" value="${this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0))}" />
               </label>
               <label>
