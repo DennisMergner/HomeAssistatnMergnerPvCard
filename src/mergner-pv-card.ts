@@ -203,7 +203,16 @@ class MergnerPvCard extends HTMLElement {
   }
 
   getCardSize(): number {
-    return 5;
+    const normalized = this.normalizeConfig(this._config ?? MergnerPvCard.getStubConfig());
+    const fittedNodes = this.fitNodesToCard(normalized.nodes);
+    const frame = this.getFlowFrameSettings(fittedNodes);
+    const summaryCount = ["pv", "house", "battery", "grid", "inverter"]
+      .map((role) => normalized.nodes.some((node) => this.getNodeRole(node) === role && Boolean(node.entity?.trim())))
+      .filter(Boolean).length;
+    const summaryRows = summaryCount === 0 ? 0 : Math.ceil(summaryCount / 4);
+    const summaryHeight = summaryRows * 58 + (summaryRows > 0 ? 12 : 0);
+    const estimatedPx = 74 + summaryHeight + frame.minHeight;
+    return Math.max(3, Math.min(14, Math.ceil(estimatedPx / 50)));
   }
 
   connectedCallback(): void {
@@ -663,6 +672,34 @@ class MergnerPvCard extends HTMLElement {
     }));
   }
 
+  private getFlowFrameSettings(nodes: RenderFlowNode[]): { aspect: number; minHeight: number } {
+    if (nodes.length === 0) {
+      return { aspect: 1.45, minHeight: 240 };
+    }
+
+    let left = 100;
+    let right = 0;
+    let top = 100;
+    let bottom = 0;
+    let maxSize = 8;
+
+    for (const node of nodes) {
+      const radius = node.renderSize / 2;
+      left = Math.min(left, node.x - radius);
+      right = Math.max(right, node.x + radius);
+      top = Math.min(top, node.y - radius);
+      bottom = Math.max(bottom, node.y + radius);
+      maxSize = Math.max(maxSize, node.renderSize);
+    }
+
+    const contentWidth = Math.max(28, (right - left) + 8);
+    const contentHeight = Math.max(24, (bottom - top) + 22);
+    const aspect = Math.max(1.05, Math.min(2.8, contentWidth / contentHeight));
+    const minHeight = Math.max(190, Math.min(460, Math.round(150 + maxSize * 4 + Math.max(0, nodes.length - 5) * 10)));
+
+    return { aspect, minHeight };
+  }
+
   private renderNode(node: RenderFlowNode): string {
     const role = this.getNodeRole(node);
     const metrics = this.getNodeMetrics(node);
@@ -744,8 +781,8 @@ class MergnerPvCard extends HTMLElement {
         <div class="node-orb ${image ? "has-image" : ""}">
           ${batteryRingMarkup}
           ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
+          ${centerMetricMarkup}
           <div class="node-overlay">
-            ${centerMetricMarkup}
             ${image ? "" : `<div class="node-media">${media}</div>`}
             <div class="node-bottom-info">
               ${showPrimaryInBottom && !centerValueEnabled && primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
@@ -1038,6 +1075,8 @@ class MergnerPvCard extends HTMLElement {
           --flow-annotation-color: ${normalized.flowStyle.textColor};
           --flow-annotation-size: ${normalized.flowStyle.textSize}px;
           --flow-annotation-stroke: ${normalized.flowStyle.textOutline}px;
+          --flow-frame-min-height: ${frame.minHeight}px;
+          --flow-frame-aspect: ${frame.aspect.toFixed(3)};
           --pv-card-node-bg: rgba(255, 255, 255, 0.08);
 
           background: var(--pv-card-bg);
@@ -1206,8 +1245,8 @@ class MergnerPvCard extends HTMLElement {
 
         .flow-wrap {
           position: relative;
-          min-height: clamp(180px, 42vw, 520px);
-          aspect-ratio: 4 / 3;
+          min-height: var(--flow-frame-min-height, 240px);
+          aspect-ratio: var(--flow-frame-aspect, 1.45);
           border-radius: 14px;
           background: radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12), transparent 45%);
         }
@@ -1572,8 +1611,8 @@ class MergnerPvCard extends HTMLElement {
 
         @media (max-width: 640px) {
           .flow-wrap {
-            min-height: 260px;
-            aspect-ratio: 1 / 1;
+            min-height: min(72vw, max(200px, var(--flow-frame-min-height, 240px)));
+            aspect-ratio: max(1, var(--flow-frame-aspect, 1.15));
           }
 
           .node {
@@ -2086,6 +2125,37 @@ class MergnerPvCardEditor extends HTMLElement {
         if (!projected) {
           return "";
         }
+        const role = node.role ?? "custom";
+        const centerValueEnabled = (node.centerValue ?? role === "battery") === true;
+        const centerValueOffsetX = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetX ?? 0));
+        const centerValueOffsetY = this.clampEditorCenterValueOffset(Number(node.centerValueOffsetY ?? 0));
+        const centerValueScale = this.clampEditorCenterValueScale(Number(node.centerValueScale ?? 1));
+
+        const mainEntity = role === "battery"
+          ? (node.secondaryEntity?.trim() || node.entity?.trim() || "")
+          : (node.entity?.trim() || "");
+        const rawState = mainEntity ? (this._hass?.states?.[mainEntity]?.state ?? "") : "";
+        const parsed = Number(rawState);
+        const isNumeric = Number.isFinite(parsed);
+        const unit = role === "battery"
+          ? "%"
+          : ((node.unit?.trim() || (mainEntity ? this.getEntityUnit(mainEntity) : "")).trim());
+        const centerValueText = role === "battery"
+          ? `${Math.max(0, Math.min(100, Math.round(isNumeric ? parsed : 50)))}%`
+          : (rawState
+            ? `${rawState}${unit ? ` ${unit}` : ""}`
+            : "0 W");
+        const centerLabelText = role === "battery"
+          ? (node.secondaryLabel?.trim() || "SOC")
+          : (node.entityLabel?.trim() || "");
+        const centerMarkup = centerValueEnabled
+          ? `
+            <div class="layout-center-metric" style="--node-center-offset-x:${centerValueOffsetX}px; --node-center-offset-y:${centerValueOffsetY}px; --node-center-scale:${centerValueScale};">
+              <div class="layout-center-value">${this.safeText(centerValueText)}</div>
+              ${centerLabelText ? `<div class="layout-center-label">${this.safeText(centerLabelText)}</div>` : ""}
+            </div>
+          `
+          : "";
 
         return `
           <button
@@ -2097,6 +2167,7 @@ class MergnerPvCardEditor extends HTMLElement {
             aria-label="Drag ${this.safeText(node.name)}"
           >
             ${image ? `<img class="layout-node-bg-image" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
+            ${centerMarkup}
             <div class="layout-node-overlay ${image ? "with-image" : ""}">
               ${image ? "" : `<div class="layout-node-media">${media}</div>`}
               <div class="layout-node-label">${this.safeText(node.name)}</div>
@@ -2105,6 +2176,8 @@ class MergnerPvCardEditor extends HTMLElement {
         `;
       })
       .join("");
+
+    const frame = this.getLayoutFrameSettings(nodes, effectiveZoom);
 
     return `
       <div class="layout-canvas-wrap">
@@ -2123,12 +2196,41 @@ class MergnerPvCardEditor extends HTMLElement {
           <input type="number" data-action="layout-zoom" min="50" max="160" step="5" value="${effectiveZoom}" ${this._layoutZoomMode === "auto" ? "disabled" : ""} />
         </div>
         <div class="layout-hint">Drag devices in the preview to set X/Y positions. Zoom scales both size and spacing.</div>
-        <div class="layout-canvas">
+        <div class="layout-canvas" style="--layout-frame-min-height:${frame.minHeight}px; --layout-frame-aspect:${frame.aspect.toFixed(3)};">
           <svg class="layout-lines" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">${lines}</svg>
           ${nodeMarkup}
         </div>
       </div>
     `;
+  }
+
+  private getLayoutFrameSettings(nodes: FlowNode[], zoom: number): { aspect: number; minHeight: number } {
+    if (nodes.length === 0) {
+      return { aspect: 1.45, minHeight: 240 };
+    }
+
+    let left = 100;
+    let right = 0;
+    let top = 100;
+    let bottom = 0;
+    let maxSizePct = 8;
+
+    for (const node of nodes) {
+      const projected = this.getProjectedLayoutNode(node, zoom);
+      const radius = projected.sizePercent / 2;
+      left = Math.min(left, projected.x - radius);
+      right = Math.max(right, projected.x + radius);
+      top = Math.min(top, projected.y - radius);
+      bottom = Math.max(bottom, projected.y + radius);
+      maxSizePct = Math.max(maxSizePct, projected.sizePercent);
+    }
+
+    const contentWidth = Math.max(30, (right - left) + 8);
+    const contentHeight = Math.max(24, (bottom - top) + 22);
+    const aspect = Math.max(1.05, Math.min(2.8, contentWidth / contentHeight));
+    const minHeight = Math.max(190, Math.min(460, Math.round(140 + maxSizePct * 4.5 + Math.max(0, nodes.length - 5) * 10)));
+
+    return { aspect, minHeight };
   }
 
   private startNodeDrag(index: number): void {
@@ -2881,8 +2983,8 @@ class MergnerPvCardEditor extends HTMLElement {
         .layout-canvas {
           position: relative;
           width: 100%;
-          min-height: clamp(180px, 42vw, 520px);
-          aspect-ratio: 4 / 3;
+          min-height: var(--layout-frame-min-height, 240px);
+          aspect-ratio: var(--layout-frame-aspect, 1.45);
           border-radius: 18px;
           overflow: hidden;
           background:
@@ -2958,6 +3060,39 @@ class MergnerPvCardEditor extends HTMLElement {
         .layout-node-overlay.with-image {
           align-content: end;
           background: linear-gradient(180deg, rgba(0, 0, 0, 0) 38%, rgba(0, 0, 0, 0.6) 100%);
+        }
+
+        .layout-center-metric {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(calc(-50% + var(--node-center-offset-x, 0px)), calc(-50% + var(--node-center-offset-y, 0px))) scale(var(--node-center-scale, 1));
+          z-index: 3;
+          display: grid;
+          justify-items: center;
+          gap: 2px;
+          padding: 2px 7px;
+          border-radius: 8px;
+          background: rgba(0, 0, 0, 0.38);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+          line-height: 1.1;
+          transform-origin: center;
+          pointer-events: none;
+        }
+
+        .layout-center-value {
+          font-size: clamp(10px, calc(13.5cqw), 28px);
+          font-weight: 700;
+          color: #ffffff;
+          white-space: nowrap;
+        }
+
+        .layout-center-label {
+          font-size: clamp(7px, calc(6.2cqw), 16px);
+          color: #acd2d3;
+          font-weight: 500;
+          white-space: nowrap;
         }
 
         .layout-node:active {
@@ -3517,7 +3652,8 @@ class MergnerPvCardEditor extends HTMLElement {
           }
 
           .layout-canvas {
-            aspect-ratio: 1 / 1;
+            min-height: min(72vw, max(200px, var(--layout-frame-min-height, 240px)));
+            aspect-ratio: max(1, var(--layout-frame-aspect, 1.15));
           }
 
           .layout-node {
