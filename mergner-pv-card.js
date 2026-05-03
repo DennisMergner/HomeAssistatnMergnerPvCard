@@ -337,6 +337,7 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           transform: translate(-50%, -50%);
           text-align: center;
           z-index: 1;
+          container-type: size;
         }
 
         .node-header {
@@ -350,7 +351,7 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           gap: 2px;
           z-index: 6;
           width: max-content;
-          max-width: min(170%, 210px);
+          max-width: 180cqw;
           pointer-events: none;
         }
 
@@ -445,7 +446,7 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           top: 50%;
           transform: translate(-50%, -50%);
           z-index: 4;
-          font-size: calc(0.94rem * var(--node-text-scale, 1));
+          font-size: clamp(10px, calc(13.5cqw), 28px);
           font-weight: 700;
           color: #ffffff;
           padding: 2px 7px;
@@ -511,8 +512,9 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
 
         .node-label {
           font-size: calc(0.74rem * var(--node-text-scale, 1) * var(--node-header-font-scale, 1));
+          font-size: clamp(8px, calc(8.8cqw * var(--node-header-font-scale, 1)), 26px);
           font-weight: 500;
-          max-width: 190px;
+          max-width: 170cqw;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -521,6 +523,7 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
         .node-kicker {
           color: var(--pv-card-muted);
           font-size: calc(0.55rem * var(--node-text-scale, 1) * var(--node-header-font-scale, 1));
+          font-size: clamp(7px, calc(6.2cqw * var(--node-header-font-scale, 1)), 16px);
           font-weight: 400;
           text-transform: uppercase;
           letter-spacing: 0.05em;
@@ -528,12 +531,14 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
 
         .node-value {
           font-size: calc(0.95rem * var(--node-text-scale, 1));
+          font-size: clamp(9px, calc(11.4cqw), 30px);
           font-weight: 600;
         }
 
         .node-value-label {
           color: var(--pv-card-muted);
           font-size: calc(0.65rem * var(--node-text-scale, 1));
+          font-size: clamp(7px, calc(6.5cqw), 18px);
           font-weight: 400;
         }
 
@@ -541,7 +546,7 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
           background: rgba(0, 0, 0, 0.45);
           color: #ffffff;
           border-radius: 8px;
-          padding: calc(1.6px * var(--node-text-scale, 1)) calc(6px * var(--node-text-scale, 1));
+          padding: clamp(1px, 1.3cqw, 4px) clamp(4px, 4.6cqw, 12px);
           line-height: 1.2;
           border: 1px solid rgba(255, 255, 255, 0.14);
         }
@@ -601,16 +606,7 @@ var P="0.0.49",F=[{id:"solar",name:"Solar",role:"pv",entityLabel:"Leistung",seco
 
           .node-header {
             top: -4px;
-            max-width: min(180%, 160px);
-          }
-
-          .node-label {
-            font-size: calc(0.68rem * var(--node-text-scale, 1));
-            max-width: 150px;
-          }
-
-          .node-kicker {
-            font-size: calc(0.5rem * var(--node-text-scale, 1));
+            max-width: 180cqw;
           }
         }
       </style>
