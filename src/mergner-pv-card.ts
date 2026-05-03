@@ -2095,14 +2095,20 @@ class MergnerPvCardEditor extends HTMLElement {
                 <span>Forward flow color</span>
                 <div class="color-row">
                   <input data-field="forwardColor" type="color" value="${this.sanitizeEditorHexColor(link.forwardColor, DEFAULT_FLOW_STYLE.forwardColor)}" />
-                  <span class="color-hint">${link.forwardColor ? "custom" : "global default"}</span>
+                  ${link.forwardColor
+                    ? `<button type="button" class="reset-color-btn" data-action="reset-link-color" data-field="forwardColor" title="Reset to global default">↺ Reset</button>`
+                    : `<span class="color-hint">global default</span>`
+                  }
                 </div>
               </label>
               <label>
                 <span>Reverse flow color</span>
                 <div class="color-row">
                   <input data-field="reverseColor" type="color" value="${this.sanitizeEditorHexColor(link.reverseColor, DEFAULT_FLOW_STYLE.reverseColor)}" />
-                  <span class="color-hint">${link.reverseColor ? "custom" : "global default"}</span>
+                  ${link.reverseColor
+                    ? `<button type="button" class="reset-color-btn" data-action="reset-link-color" data-field="reverseColor" title="Reset to global default">↺ Reset</button>`
+                    : `<span class="color-hint">global default</span>`
+                  }
                 </div>
               </label>
             </div>
@@ -2338,11 +2344,20 @@ class MergnerPvCardEditor extends HTMLElement {
           return;
         }
 
-        const eventName = input instanceof HTMLInputElement && input.type === "color" ? "input" : "change";
-        input.addEventListener(eventName, () => {
+        input.addEventListener("change", () => {
           const field = input.dataset.field as keyof FlowLink;
           const nextLinks = [...links];
           nextLinks[index] = { ...nextLinks[index], [field]: input.value };
+          this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
+        });
+      });
+
+      row.querySelectorAll<HTMLButtonElement>("button[data-action='reset-link-color']").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const field = btn.dataset.field as "forwardColor" | "reverseColor";
+          const nextLinks = [...links];
+          const { [field]: _removed, ...rest } = nextLinks[index] as FlowLink & Record<string, unknown>;
+          nextLinks[index] = rest as FlowLink;
           this.emitConfig({ ...this.safeConfig, nodes, links: nextLinks });
         });
       });
@@ -2999,6 +3014,21 @@ class MergnerPvCardEditor extends HTMLElement {
           font-size: 0.75rem;
           color: var(--secondary-text-color, rgba(128,128,128,0.8));
           font-style: italic;
+        }
+
+        .reset-color-btn {
+          font-size: 0.75rem;
+          padding: 3px 8px;
+          border-radius: 6px;
+          border: 1px solid var(--divider-color, rgba(128,128,128,0.35));
+          background: transparent;
+          color: var(--secondary-text-color, rgba(200,200,200,0.8));
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        .reset-color-btn:hover {
+          background: rgba(255,255,255,0.08);
         }
 
         @media (min-width: 980px) {
