@@ -1658,6 +1658,7 @@ class MergnerPvCardEditor extends HTMLElement {
   private _entityIdsSignature = "";
   private _layoutZoom = 100;
   private _layoutZoomMode: "auto" | "manual" = "auto";
+  private _layoutGridSize = 2.5; // Grid snap in percentage
   private _expandedSections = new Set<string>();
   private _openEntityPicker?: string;
   private _entitySearchTerms = new Map<string, string>();
@@ -1716,6 +1717,20 @@ class MergnerPvCardEditor extends HTMLElement {
       return fallback;
     }
     return Math.max(min, Math.min(max, value));
+  }
+
+  private clampEditorGridSize(value: number): number {
+    if (!Number.isFinite(value) || value <= 0) {
+      return 2.5;
+    }
+    return Math.max(0.5, Math.min(25, Number(value.toFixed(1))));
+  }
+
+  private snapToGrid(value: number, gridSize: number): number {
+    if (gridSize <= 0) {
+      return value;
+    }
+    return Math.round(value / gridSize) * gridSize;
   }
 
   private sanitizeEditorHexColor(input: unknown, fallback: string): string {
@@ -2126,27 +2141,14 @@ class MergnerPvCardEditor extends HTMLElement {
 
     const nodeMarkup = nodes
       .map((node, index) => {
+        const image = node.image?.trim();
+        const media = `<span>${this.safeText(node.name.slice(0, 1).toUpperCase())}</span>`;
         const projected = projectedNodeMap.get(node.id);
         if (!projected) {
           return "";
         }
-        
-        // Convert FlowNode to RenderFlowNode for the shared rendering function
-        const renderNode: RenderFlowNode = {
-          ...node,
-          renderSize: projected.sizePercent,
-          x: projected.x,
-          y: projected.y,
-        };
-        
-        // Use the SAME article HTML as the live card, but centered in the button wrapper
-        const articleHTML = this.getNodeArticleHTML(
-          renderNode,
-          "50%",
-          "50%"
-        );
+        const role = node.role ?? "custom";
 
-        // Wrap in draggable button for editor context
         return `
           <button
             class="layout-editor-node-wrapper"
@@ -2156,7 +2158,13 @@ class MergnerPvCardEditor extends HTMLElement {
             style="--layout-node-size:${projected.sizePercent.toFixed(2)}%; left:${projected.x}%; top:${projected.y}%; width: var(--layout-node-size); height: var(--layout-node-size);"
             aria-label="Drag ${this.safeText(node.name)}"
           >
-            ${articleHTML}
+            <div class="layout-editor-node-inner ${image ? "has-image" : ""}">
+              ${image ? `<img class="layout-editor-node-bg" src="${this.safeText(image)}" alt="${this.safeText(node.name)}" />` : ""}
+              <div class="layout-editor-node-content">
+                ${image ? "" : `<div class="layout-editor-node-media">${media}</div>`}
+                <div class="layout-editor-node-label">${this.safeText(node.name)}</div>
+              </div>
+            </div>
           </button>
         `;
       })
@@ -3035,6 +3043,74 @@ class MergnerPvCardEditor extends HTMLElement {
 
         .layout-editor-node-wrapper article {
           pointer-events: none;
+        }
+
+        .layout-editor-node-inner {
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding: 0 6px 8px;
+          box-sizing: border-box;
+          position: relative;
+          border-radius: 50%;
+          background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+          border: 1px solid rgba(255, 255, 255, 0.16);
+          overflow: hidden;
+        }
+
+        .layout-editor-node-inner.has-image {
+          background: transparent;
+        }
+
+        .layout-editor-node-bg {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          object-position: center;
+          border-radius: 50%;
+          filter: brightness(0.72) saturate(1.05);
+          z-index: 0;
+        }
+
+        .layout-editor-node-content {
+          position: relative;
+          z-index: 1;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 100%;
+          gap: 3px;
+        }
+
+        .layout-editor-node-media {
+          width: clamp(16px, 34cqw, 48px);
+          height: clamp(16px, 34cqw, 48px);
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          background: rgba(255, 255, 255, 0.12);
+          color: #fff;
+          font-weight: 700;
+          font-size: clamp(8px, 12cqw, 16px);
+        }
+
+        .layout-editor-node-label {
+          max-width: 90%;
+          font-size: clamp(7px, 9cqw, 13px);
+          line-height: 1.1;
+          text-align: center;
+          color: #f5fbfb;
+          background: rgba(0, 0, 0, 0.48);
+          padding: 2px 6px;
+          border-radius: 6px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
 
         h4 {
