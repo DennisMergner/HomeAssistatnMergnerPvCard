@@ -703,10 +703,10 @@ class MergnerPvCard extends HTMLElement {
   }
 
   private renderNode(node: RenderFlowNode): string {
-    return this.getNodeArticleHTML(node, this.clampPercent(node.x), this.clampPercent(node.y));
+    return this.getNodeArticleHTML(node, this.clampPercent(node.x), this.clampPercent(node.y), false);
   }
 
-  private getNodeArticleHTML(node: RenderFlowNode, posX: string, posY: string): string {
+  private getNodeArticleHTML(node: RenderFlowNode, posX: string, posY: string, isEditorContext: boolean = false): string {
     const role = this.getNodeRole(node);
     const metrics = this.getNodeMetrics(node);
     const primaryMetric = metrics[0];
@@ -2139,11 +2139,11 @@ class MergnerPvCardEditor extends HTMLElement {
           y: projected.y,
         };
         
-        // Use the SAME article HTML as the live card
+        // Use the SAME article HTML as the live card, but centered in the button wrapper
         const articleHTML = this.getNodeArticleHTML(
           renderNode,
-          this.clampPercent(projected.x),
-          this.clampPercent(projected.y)
+          "50%",
+          "50%"
         );
 
         // Wrap in draggable button for editor context
