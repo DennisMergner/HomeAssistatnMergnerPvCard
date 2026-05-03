@@ -72,6 +72,7 @@ type FlowStyleConfig = {
   textOutline?: number;
   linePattern?: "dashed" | "orb";
   speedCurve?: "linear" | "log";
+  speedMultiplier?: number;
   maxAnimatedWatts?: number;
   dynamicOrbCount?: boolean;
   orbCountMultiplier?: number;
@@ -106,6 +107,7 @@ type ResolvedFlowStyle = {
   textOutline: number;
   linePattern: "dashed" | "orb";
   speedCurve: "linear" | "log";
+  speedMultiplier: number;
   maxAnimatedWatts: number;
   dynamicOrbCount: boolean;
   orbCountMultiplier: number;
@@ -155,6 +157,7 @@ const DEFAULT_FLOW_STYLE: ResolvedFlowStyle = {
   textOutline: 0.28,
   linePattern: "dashed",
   speedCurve: "linear",
+  speedMultiplier: 1,
   maxAnimatedWatts: 12000,
   dynamicOrbCount: false,
   orbCountMultiplier: 1
@@ -247,6 +250,7 @@ class MergnerPvCard extends HTMLElement {
       textOutline: Math.max(0, Math.min(0.8, Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline))),
       linePattern: source.linePattern === "orb" ? "orb" : "dashed",
       speedCurve: source.speedCurve === "log" ? "log" : "linear",
+      speedMultiplier: Math.max(0.3, Math.min(3, Number(source.speedMultiplier ?? DEFAULT_FLOW_STYLE.speedMultiplier))),
       maxAnimatedWatts: Math.max(1200, Math.min(30000, Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts))),
       dynamicOrbCount: source.dynamicOrbCount === true,
       orbCountMultiplier: Math.max(0.2, Math.min(6, Number(source.orbCountMultiplier ?? DEFAULT_FLOW_STYLE.orbCountMultiplier)))
@@ -516,6 +520,7 @@ class MergnerPvCard extends HTMLElement {
     const batteryLevel = role === "battery" ? this.getBatteryLevel(metrics) : undefined;
     const safeName = this.safeText(node.name);
     const nodeSize = Math.max(4, Math.min(40, node.renderSize));
+    const nodeTextScale = Math.max(0.7, Math.min(1.22, nodeSize / 18));
     const image = node.image?.trim();
     const media = `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
     const batteryStateClass =
@@ -546,7 +551,7 @@ class MergnerPvCard extends HTMLElement {
         `;
 
     return `
-      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}%; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
+      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
         <div class="node-orb ${image ? "has-image" : ""}">
           ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
           <div class="node-overlay">
@@ -715,11 +720,13 @@ class MergnerPvCard extends HTMLElement {
     direction: "forward" | "reverse" | "idle",
     flowStyle: ResolvedFlowStyle
   ): number {
+    const speedMultiplier = Math.max(0.3, flowStyle.speedMultiplier);
     if (direction === "idle") {
-      return 2.6;
+      return Math.max(0.35, 2.6 / speedMultiplier);
     }
     const normalized = this.getFlowPowerNormalized(powerWatts, flowStyle);
-    return 2.2 - normalized * 1.65;
+    const baseDuration = 2.2 - normalized * 1.65;
+    return Math.max(0.22, baseDuration / speedMultiplier);
   }
 
   private getFlowParticleCount(powerWatts: number, direction: "forward" | "reverse" | "idle", flowStyle: ResolvedFlowStyle): number {
@@ -1110,7 +1117,7 @@ class MergnerPvCard extends HTMLElement {
         }
 
         .node-label {
-          font-size: 0.84rem;
+          font-size: calc(0.84rem * var(--node-text-scale, 1));
           font-weight: 700;
           margin-top: 2px;
           max-width: 100px;
@@ -1118,28 +1125,28 @@ class MergnerPvCard extends HTMLElement {
 
         .node-kicker {
           color: var(--pv-card-muted);
-          font-size: 0.64rem;
+          font-size: calc(0.64rem * var(--node-text-scale, 1));
           text-transform: uppercase;
           letter-spacing: 0.06em;
         }
 
         .node-value {
           margin-top: 3px;
-          font-size: 0.97rem;
+          font-size: calc(0.97rem * var(--node-text-scale, 1));
           font-weight: 700;
         }
 
         .node-value-label {
           margin-top: 2px;
           color: var(--pv-card-muted);
-          font-size: 0.67rem;
+          font-size: calc(0.67rem * var(--node-text-scale, 1));
         }
 
         .node-chip {
           background: rgba(0, 0, 0, 0.52);
           color: #ffffff;
           border-radius: 8px;
-          padding: 2px 7px;
+          padding: calc(2px * var(--node-text-scale, 1)) calc(7px * var(--node-text-scale, 1));
           line-height: 1.2;
         }
 
@@ -1264,6 +1271,7 @@ class MergnerPvCardEditor extends HTMLElement {
       textOutline: this.clampFlowSetting(Number(source.textOutline ?? DEFAULT_FLOW_STYLE.textOutline), 0, 0.8, DEFAULT_FLOW_STYLE.textOutline),
       linePattern: source.linePattern === "orb" ? "orb" : "dashed",
       speedCurve: source.speedCurve === "log" ? "log" : "linear",
+      speedMultiplier: this.clampFlowSetting(Number(source.speedMultiplier ?? DEFAULT_FLOW_STYLE.speedMultiplier), 0.3, 3, DEFAULT_FLOW_STYLE.speedMultiplier),
       maxAnimatedWatts: this.clampFlowSetting(Number(source.maxAnimatedWatts ?? DEFAULT_FLOW_STYLE.maxAnimatedWatts), 1200, 30000, DEFAULT_FLOW_STYLE.maxAnimatedWatts),
       dynamicOrbCount: source.dynamicOrbCount === true,
       orbCountMultiplier: this.clampFlowSetting(Number(source.orbCountMultiplier ?? DEFAULT_FLOW_STYLE.orbCountMultiplier), 0.2, 6, DEFAULT_FLOW_STYLE.orbCountMultiplier)
@@ -1469,6 +1477,30 @@ class MergnerPvCardEditor extends HTMLElement {
     }
 
     return "any";
+  }
+
+  private applyPickerFilter(picker: HTMLElement, termRaw: string): void {
+    const lower = termRaw.trim().toLowerCase();
+    picker.querySelectorAll<HTMLElement>(".picker-option").forEach((opt) => {
+      if (opt.classList.contains("picker-clear")) {
+        opt.hidden = false;
+        return;
+      }
+      const name = (opt.querySelector(".picker-option-name")?.textContent ?? "").toLowerCase();
+      const id = (opt.dataset.value ?? "").toLowerCase();
+      opt.hidden = lower.length > 0 && !name.includes(lower) && !id.includes(lower);
+    });
+
+    picker.querySelectorAll<HTMLElement>(".picker-group").forEach((group) => {
+      const visible = group.querySelectorAll<HTMLElement>(".picker-option:not([hidden])");
+      group.hidden = visible.length === 0;
+    });
+
+    const hasVisibleOptions = picker.querySelectorAll<HTMLElement>(".picker-option:not([hidden])").length > 0;
+    const noResults = picker.querySelector<HTMLElement>(".picker-no-results");
+    if (noResults) {
+      noResults.hidden = hasVisibleOptions;
+    }
   }
 
   private renderEntitySelect(
@@ -1975,11 +2007,11 @@ class MergnerPvCardEditor extends HTMLElement {
       const searchInput = picker.querySelector<HTMLInputElement>(".picker-search");
       if (searchInput) {
         setTimeout(() => searchInput.focus(), 0);
+        this.applyPickerFilter(picker, searchInput.value);
         searchInput.addEventListener("input", () => {
           const term = searchInput.value;
           this._entitySearchTerms.set(pickerId, term);
-          this._openEntityPicker = pickerId;
-          this.render();
+          this.applyPickerFilter(picker, term);
         });
 
         searchInput.addEventListener("keydown", (event) => {
@@ -2011,6 +2043,14 @@ class MergnerPvCardEditor extends HTMLElement {
           }
         });
       });
+    });
+
+    root.addEventListener("click", (event) => {
+      const target = event.target as Element | null;
+      if (!target?.closest(".entity-picker") && this._openEntityPicker) {
+        this._openEntityPicker = undefined;
+        this.render();
+      }
     });
 
     root.querySelectorAll<HTMLInputElement>("input[data-action='layout-zoom']").forEach((input) => {
@@ -2061,6 +2101,8 @@ class MergnerPvCardEditor extends HTMLElement {
           const numericField = field as "baseThickness" | "textSize" | "textOutline";
           if (field === "maxAnimatedWatts") {
             next.maxAnimatedWatts = Number(control.value);
+          } else if (field === "speedMultiplier") {
+            next.speedMultiplier = Number(control.value);
           } else if (field === "orbCountMultiplier") {
             next.orbCountMultiplier = Number(control.value);
           } else {
@@ -2225,6 +2267,7 @@ class MergnerPvCardEditor extends HTMLElement {
           border: 1px solid var(--divider-color, rgba(128, 128, 128, 0.3));
           border-radius: 16px;
           background: var(--card-background-color, rgba(127, 127, 127, 0.06));
+          min-width: 0;
         }
 
         .panel-title {
@@ -2482,6 +2525,7 @@ class MergnerPvCardEditor extends HTMLElement {
           display: grid;
           gap: 8px;
           grid-template-columns: 1fr;
+          min-width: 0;
         }
 
         .metric-group {
@@ -2695,6 +2739,14 @@ class MergnerPvCardEditor extends HTMLElement {
           display: grid;
           gap: 4px;
           font-size: 0.82rem;
+          min-width: 0;
+        }
+
+        label > input,
+        label > select,
+        label > .entity-picker {
+          min-width: 0;
+          max-width: 100%;
         }
 
         label span {
@@ -2742,6 +2794,7 @@ class MergnerPvCardEditor extends HTMLElement {
           display: grid;
           gap: 8px;
           grid-template-columns: 1fr;
+          min-width: 0;
         }
 
         .link-wide {
@@ -2945,6 +2998,11 @@ class MergnerPvCardEditor extends HTMLElement {
                 <option value="linear" ${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).speedCurve === "linear" ? "selected" : ""}>Linear (0 to max W)</option>
                 <option value="log" ${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).speedCurve === "log" ? "selected" : ""}>Logarithmic</option>
               </select>
+            </label>
+            <label class="flow-style-row range">
+              <span>Flow speed multiplier</span>
+              <input data-action="flow-style" data-kind="number" data-field="speedMultiplier" type="range" min="0.3" max="3" step="0.1" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).speedMultiplier.toFixed(1)}" />
+              <input data-action="flow-style" data-kind="number" data-field="speedMultiplier" type="number" min="0.3" max="3" step="0.1" value="${this.normalizeEditorFlowStyle(this.safeConfig.flowStyle).speedMultiplier.toFixed(1)}" />
             </label>
             <label class="flow-style-row range">
               <span>Max watts for full speed/thickness</span>
