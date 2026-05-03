@@ -398,6 +398,48 @@ class MergnerPvCard extends HTMLElement {
     return this.clampMeterPercent(levelMetric.numericValue);
   }
 
+  private lerpColor(fromHex: string, toHex: string, t: number): string {
+    const from = fromHex.replace("#", "");
+    const to = toHex.replace("#", "");
+    const clamped = Math.max(0, Math.min(1, t));
+
+    const fromR = Number.parseInt(from.slice(0, 2), 16);
+    const fromG = Number.parseInt(from.slice(2, 4), 16);
+    const fromB = Number.parseInt(from.slice(4, 6), 16);
+
+    const toR = Number.parseInt(to.slice(0, 2), 16);
+    const toG = Number.parseInt(to.slice(2, 4), 16);
+    const toB = Number.parseInt(to.slice(4, 6), 16);
+
+    const r = Math.round(fromR + (toR - fromR) * clamped);
+    const g = Math.round(fromG + (toG - fromG) * clamped);
+    const b = Math.round(fromB + (toB - fromB) * clamped);
+
+    return `#${[r, g, b].map((value) => value.toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  private getBatteryRingColor(level: number): string {
+    const stops = [
+      { at: 0, color: "#ff1f1f" },
+      { at: 20, color: "#ff8a00" },
+      { at: 50, color: "#ffd84d" },
+      { at: 75, color: "#9eea4d" },
+      { at: 100, color: "#2ea043" }
+    ];
+
+    const clampedLevel = Math.max(0, Math.min(100, level));
+    for (let index = 0; index < stops.length - 1; index += 1) {
+      const current = stops[index];
+      const next = stops[index + 1];
+      if (clampedLevel >= current.at && clampedLevel <= next.at) {
+        const ratio = (clampedLevel - current.at) / (next.at - current.at || 1);
+        return this.lerpColor(current.color, next.color, ratio);
+      }
+    }
+
+    return stops[stops.length - 1].color;
+  }
+
   private getSummaryUnit(nodes: FlowNode[]): string {
     for (const node of nodes) {
       const unit = node.unit?.trim() || this.getUnit(node.entity);
@@ -572,6 +614,9 @@ class MergnerPvCard extends HTMLElement {
     const nodeTextScale = Math.max(0.7, Math.min(1.22, nodeSize / 18));
     const image = node.image?.trim();
     const media = `<div class="fallback-icon">${safeName.slice(0, 1)}</div>`;
+    const showPrimaryInBottom = role !== "battery" || batteryLevel === undefined;
+    const batteryColor = batteryLevel === undefined ? "#6edb7a" : this.getBatteryRingColor(batteryLevel);
+    const batteryStyle = batteryLevel === undefined ? "" : ` --battery-level:${batteryLevel}; --battery-color:${batteryColor};`;
     const batteryStateClass =
       role === "battery" && primaryMetric && !Number.isNaN(primaryMetric.numericValue)
         ? primaryMetric.numericValue > 0
@@ -590,29 +635,27 @@ class MergnerPvCard extends HTMLElement {
         `
       )
       .join("");
-    const batteryMeter =
-      batteryLevel === undefined
-        ? ""
-        : `
-          <div class="battery-meter" aria-label="Battery level ${batteryLevel}%">
-            <div class="battery-meter-fill" style="width:${batteryLevel}%;"></div>
-          </div>
-        `;
+    const batteryRingMarkup = batteryLevel === undefined ? "" : `<div class="battery-ring" aria-hidden="true"></div>`;
+    const batteryCenterMetric =
+      role === "battery" && batteryLevel !== undefined
+        ? `<div class="battery-center-percent" aria-label="Battery level ${batteryLevel}%">${batteryLevel}%</div>`
+        : "";
 
     return `
-      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;">
+      <article class="node node-${role} ${batteryStateClass}" style="--node-size:${nodeSize}%; --node-text-scale:${nodeTextScale.toFixed(2)}; left:${this.clampPercent(node.x)}%; top:${this.clampPercent(node.y)}%;${batteryStyle}">
         <div class="node-header">
           <div class="node-kicker node-chip">${this.safeText(this.roleLabel(role))}</div>
           <div class="node-label node-chip">${safeName}</div>
         </div>
         <div class="node-orb ${image ? "has-image" : ""}">
+          ${batteryRingMarkup}
           ${image ? `<img class="node-bg-image" src="${this.safeText(image)}" alt="${safeName}" loading="lazy" />` : ""}
           <div class="node-overlay">
+            ${batteryCenterMetric}
             ${image ? "" : `<div class="node-media">${media}</div>`}
             <div class="node-bottom-info">
-              ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
-              ${primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
-              ${batteryMeter}
+              ${showPrimaryInBottom && primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value node-chip">${this.safeText(this.formatMetricValue(primaryMetric.value, primaryMetric.unit))}</div>` : ""}
+              ${showPrimaryInBottom && primaryMetric && !this.isEmptyState(primaryMetric.value) ? `<div class="node-value-label node-chip">${this.safeText(primaryMetric.label)}</div>` : ""}
             </div>
           </div>
         </div>
@@ -1206,9 +1249,22 @@ class MergnerPvCard extends HTMLElement {
           z-index: 0;
         }
 
+        .battery-ring {
+          position: absolute;
+          inset: -4px;
+          border-radius: 50%;
+          pointer-events: none;
+          z-index: 2;
+          transform: rotate(-90deg);
+          background: conic-gradient(var(--battery-color, #6edb7a) calc(var(--battery-level, 0) * 1%), rgba(255, 255, 255, 0.16) 0);
+          -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
+          mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 7px));
+          filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.16));
+        }
+
         .node-overlay {
           position: relative;
-          z-index: 1;
+          z-index: 3;
           width: 100%;
           height: 100%;
           display: flex;
@@ -1217,6 +1273,23 @@ class MergnerPvCard extends HTMLElement {
           justify-content: flex-end;
           padding: 0 6px 8px;
           box-sizing: border-box;
+        }
+
+        .battery-center-percent {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          z-index: 4;
+          font-size: calc(0.94rem * var(--node-text-scale, 1));
+          font-weight: 700;
+          color: #ffffff;
+          padding: 2px 7px;
+          border-radius: 8px;
+          background: rgba(0, 0, 0, 0.38);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+          line-height: 1.1;
         }
 
         .node-bottom-info {
@@ -1229,6 +1302,10 @@ class MergnerPvCard extends HTMLElement {
 
         .node-orb.has-image {
           background: transparent;
+        }
+
+        .node-battery .node-orb {
+          border: 2px solid rgba(255, 255, 255, 0.24);
         }
 
         .node-media {
@@ -1314,21 +1391,6 @@ class MergnerPvCard extends HTMLElement {
 
         .node-stat span {
           color: var(--pv-card-muted);
-        }
-
-        .battery-meter {
-          width: 100%;
-          height: 6px;
-          margin-top: 8px;
-          border-radius: 999px;
-          overflow: hidden;
-          background: rgba(255, 255, 255, 0.12);
-        }
-
-        .battery-meter-fill {
-          height: 100%;
-          border-radius: inherit;
-          background: linear-gradient(90deg, #6edb7a 0%, #9ff6b0 100%);
         }
 
         .node-battery.is-charging {
